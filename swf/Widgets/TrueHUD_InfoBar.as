@@ -46,7 +46,9 @@ class Widgets.TrueHUD_InfoBar extends Widgets.TrueHUD_InfoBarBase
 		resourcesYBoth = 11.5;
 		specialYHidden = -3.5;
 		specialYShown = -9.5;
-	
+		// Lift the whole bar by the height of the stamina and magicka bars shown under it (TrueHUD_InfoBarBase.updateLiftY)
+		bLiftWithResources = true;
+
 		Bars.Resources._y = 2.5;
 		Bars.Special._y = -3.5;
 
@@ -144,7 +146,7 @@ class Widgets.TrueHUD_InfoBar extends Widgets.TrueHUD_InfoBarBase
 
 		if (((damageCounterWidth - (fCurrentResourceWidth + resourcesOffset)) / 2) > DamageCounter.textWidth)
 		{
-			return damageCounterY;
+			return damageCounterY + calculateLiftY();
 		}
 		else
 		{

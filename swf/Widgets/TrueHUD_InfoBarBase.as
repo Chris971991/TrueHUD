@@ -17,6 +17,12 @@ class Widgets.TrueHUD_InfoBarBase extends MovieClip
 	var resourcesTween: TweenLite;
 	var specialTween: TweenLite;
 	var nameYTween: TweenLite;
+	// Lifting the bar by the resource bars shown under it (updateLiftY): on for the floating info bar, off for the boss bar
+	var bLiftWithResources = false;
+	var fDesiredLiftY = 0;
+	var liftTweenBars: TweenLite;
+	var liftTweenIndicator: TweenLite;
+	var liftTweenIndicatorMask: TweenLite;
 	var damageYTween: TweenLite;
 
 	var targetType: Number;
@@ -354,13 +360,13 @@ class Widgets.TrueHUD_InfoBarBase extends MovieClip
 		switch (uDisplayedResources)
 		{
 		case 0: // none
-			return damageCounterY;
+			return damageCounterY + calculateLiftY();
 			break;
 		case 1: // stamina
-			return damageCounterY + resourcesYOffsetOne;
+			return damageCounterY + resourcesYOffsetOne + calculateLiftY();
 			break;
 		case 2: // both
-			return damageCounterY + resourcesYOffsetTwo;
+			return damageCounterY + resourcesYOffsetTwo + calculateLiftY();
 			break;
 		}
 	}
@@ -369,11 +375,43 @@ class Widgets.TrueHUD_InfoBarBase extends MovieClip
 	{
 		if (bDisplayedSpecial)
 		{
-			return nameY + specialNameOffset;
+			return nameY + specialNameOffset + calculateLiftY();
 		}
 		else
 		{
-			return nameY;
+			return nameY + calculateLiftY();
+		}
+	}
+
+	// How far the whole bar moves up while resource bars show under the health bar: by exactly their height (the stamina
+	// bar alone 6, magicka and stamina 9, the same offsets the damage counter moves down by), so the lowest bar shown keeps
+	// the gap above the head that the health bar alone has
+	public function calculateLiftY() : Number
+	{
+		if (!bLiftWithResources)
+		{
+			return 0;
+		}
+		switch (uDisplayedResources)
+		{
+		case 1: // stamina
+			return -resourcesYOffsetOne;
+		case 2: // both
+			return -resourcesYOffsetTwo;
+		}
+		return 0;
+	}
+
+	public function updateLiftY()
+	{
+		var liftY = calculateLiftY();
+
+		if (fDesiredLiftY != liftY)
+		{
+			fDesiredLiftY = liftY;
+			liftTweenBars = TweenLite.to(Bars, 0.25, {_y:liftY, ease:Sine.easeIn});
+			liftTweenIndicator = TweenLite.to(Indicator, 0.25, {_y:liftY, ease:Sine.easeIn});
+			liftTweenIndicatorMask = TweenLite.to(IndicatorMask, 0.25, {_y:liftY, ease:Sine.easeIn});
 		}
 	}
 
@@ -419,7 +457,9 @@ class Widgets.TrueHUD_InfoBarBase extends MovieClip
 			break;
 		}
 
+		updateLiftY();
 		updateDamageY();
+		updateNameY();
 	}
 
 	public function toggleResources(a_mode: Number)
