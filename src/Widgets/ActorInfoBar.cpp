@@ -16,8 +16,47 @@ namespace Scaleform
 			return;
 		}
 
+		if (IsOutOfRangeOrSight(a_deltaTime)) {
+			// Hidden, not removed: it shows again once back in range and sight, while TrueHUD still wants it
+			RE::GFxValue::DisplayInfo displayInfo;
+			displayInfo.SetVisible(false);
+			_object.SetDisplayInfo(displayInfo);
+			return;
+		}
+
 		UpdatePosition();
 		UpdateInfo();
+	}
+
+	bool ActorInfoBar::IsOutOfRangeOrSight(float a_deltaTime)
+	{
+		if (Settings::fInfoBarMaxDistance <= 0.f && !Settings::bInfoBarRequireLineOfSight) {
+			return false;
+		}
+
+		auto playerCharacter = RE::PlayerCharacter::GetSingleton();
+		auto target = _refHandle.get();
+		if (!playerCharacter || !target) {
+			return false;
+		}
+
+		if (Settings::fInfoBarMaxDistance > 0.f && playerCharacter->GetPosition().GetDistance(target->GetPosition()) > Settings::fInfoBarMaxDistance) {
+			return true;
+		}
+
+		if (Settings::bInfoBarRequireLineOfSight) {
+			// Asked at most every 0.12 s per bar; the last answer stands in between
+			_timeSinceLineOfSightCheck += a_deltaTime;
+			if (!_bLineOfSightChecked || _timeSinceLineOfSightCheck >= 0.12f) {
+				bool bUnk = false;
+				_bHasLineOfSight = playerCharacter->HasLineOfSight(target.get(), bUnk);
+				_bLineOfSightChecked = true;
+				_timeSinceLineOfSightCheck = 0.f;
+			}
+			return !_bHasLineOfSight;
+		}
+
+		return false;
 	}
 
 	void ActorInfoBar::UpdatePosition()
@@ -43,7 +82,16 @@ namespace Scaleform
 		RE::GRectF rect = _view->GetVisibleFrameRect();
 
 		RE::NiPoint3 targetPos;
-		Utils::GetTargetPos(_refHandle, targetPos, Settings::uInfoBarAnchor == WidgetAnchor::kBody);
+		bool bPlaced = false;
+		if (Settings::uInfoBarAnchor == WidgetAnchor::kHeadNode) {
+			auto target = _refHandle.get();
+			if (target && target->formType == RE::FormType::ActorCharacter && target->Get3D2()) {
+				bPlaced = Utils::GetNodePosition(RE::ActorPtr(target->As<RE::Actor>()), "NPC Head [Head]", targetPos);
+			}
+		}
+		if (!bPlaced) {
+			Utils::GetTargetPos(_refHandle, targetPos, Settings::uInfoBarAnchor == WidgetAnchor::kBody);
+		}
 		targetPos.z += Settings::fInfoBarOffsetZ;
 		RE::NiPoint2 screenPos;
 
@@ -82,6 +130,7 @@ namespace Scaleform
 		RE::GFxValue::DisplayInfo displayInfo;
 		displayInfo.SetPosition(screenPos.x, screenPos.y);
 		displayInfo.SetScale(scale, scale);
+		displayInfo.SetVisible(true);
 		_object.SetDisplayInfo(displayInfo);
 	}
 

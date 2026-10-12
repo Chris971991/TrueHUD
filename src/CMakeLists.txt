@@ -118,6 +118,12 @@ target_link_libraries(
 		xbyak::xbyak
 )
 
+# Dovakarn's build: hide bars beyond 1000 units and out of sight by default (Settings.h)
+option(TRUEHUD_DOVAKARN_DEFAULTS "Build with Dovakarn's defaults for fInfoBarMaxDistance and bInfoBarRequireLineOfSight" OFF)
+if(TRUEHUD_DOVAKARN_DEFAULTS)
+	target_compile_definitions("${PROJECT_NAME}" PRIVATE TRUEHUD_DOVAKARN_DEFAULTS)
+endif()
+
 target_precompile_headers(
 	"${PROJECT_NAME}"
 	PRIVATE

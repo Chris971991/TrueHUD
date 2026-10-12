@@ -11,6 +11,10 @@ Dovakarn Skyrim Together server for the floating health bar above characters:
   (the stamina bar alone 6, both 9, the same offsets TrueHUD already uses for the damage counter), so the lowest bar
   shown keeps the same small gap above the character's head as the health bar alone. Without it the lower bars sat
   down on helmets and quivers. The boss bar is unchanged.
+- **Branch `dovakarn/1.1.9-head-anchor`** adds, in the plugin: `uInfoBarAnchor = 2`, the bar at the `NPC Head [Head]`
+  node (the point Dovakarn's name plates use, so they no longer drift apart with the camera's angle), and
+  `fInfoBarMaxDistance` / `bInfoBarRequireLineOfSight`, which hide a floating bar while its actor is out of range or
+  sight (off by default). How Dovakarn's DLL is built: `DOVAKARN-BUILD.md`.
 - Source: `swf/Widgets/TrueHUD_InfoBarBase.as` (`calculateLiftY`, `updateLiftY`, called from `moveResources`) and
   `swf/Widgets/TrueHUD_InfoBar.as` (switches it on). How the shipped SWF is built: `swf/ffdec/BUILD.md`.
 

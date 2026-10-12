@@ -52,6 +52,7 @@ enum class WidgetAnchor : std::uint32_t
 {
 	kBody = 0,
 	kHead = 1,
+	kHeadNode = 2,  // the "NPC Head [Head]" node's world position (falls back to kHead when the actor has no such node)
 };
 
 enum class InfoBarIndicatorMode : std::uint32_t
@@ -121,6 +122,14 @@ struct Settings
 	static inline InfoBarsResourcesDisplayMode uInfoBarSpecialModeOthers = InfoBarsResourcesDisplayMode::kNever;
 	static inline bool bInfoBarScaleWithDistance = true;
 	static inline WidgetAnchor uInfoBarAnchor = WidgetAnchor::kHead;
+#ifdef TRUEHUD_DOVAKARN_DEFAULTS
+	// Dovakarn's build: bars show within the name plates' range (1000) and in sight, unless its settings say otherwise
+	static inline float fInfoBarMaxDistance = 1000.f;
+	static inline bool bInfoBarRequireLineOfSight = true;
+#else
+	static inline float fInfoBarMaxDistance = 0.f;            // hide (not remove) a bar while its actor is further from the player than this; 0 = never
+	static inline bool bInfoBarRequireLineOfSight = false;    // hide (not remove) a bar while the player has no line of sight to its actor
+#endif
 	static inline float fInfoBarOffsetZ = 30.f;
 	static inline bool bInfoBarLevelColorOutline = true;
 	static inline uint16_t uInfoBarLevelThreshold = 10;

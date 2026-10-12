@@ -29,6 +29,11 @@ void Settings::Initialize()
 		
 		glob_trueHUDVersion = dataHandler->LookupForm<RE::TESGlobal>(0x801, "TrueHUD.esl");
 		glob_trueHUDSpecialResourceBars = dataHandler->LookupForm<RE::TESGlobal>(0x802, "TrueHUD.esl");
+		// A load order that loads the plugin as an ESP (TrueHUD.esl renamed TrueHUD.esp)
+		if (!glob_trueHUDVersion) {
+			glob_trueHUDVersion = dataHandler->LookupForm<RE::TESGlobal>(0x801, "TrueHUD.esp");
+			glob_trueHUDSpecialResourceBars = dataHandler->LookupForm<RE::TESGlobal>(0x802, "TrueHUD.esp");
+		}
 	}
 
 	logger::info("...success");
@@ -259,6 +264,8 @@ void Settings::ReadSettings()
 		ReadUInt32Setting(mcm, "ActorInfoBars", "uInfoBarSpecialModeOthers", (uint32_t&)uInfoBarSpecialModeOthers);
 		ReadBoolSetting(mcm, "ActorInfoBars", "bInfoBarScaleWithDistance", bInfoBarScaleWithDistance);
 		ReadUInt32Setting(mcm, "ActorInfoBars", "uInfoBarAnchor", (uint32_t&)uInfoBarAnchor);
+		ReadFloatSetting(mcm, "ActorInfoBars", "fInfoBarMaxDistance", fInfoBarMaxDistance);
+		ReadBoolSetting(mcm, "ActorInfoBars", "bInfoBarRequireLineOfSight", bInfoBarRequireLineOfSight);
 		ReadFloatSetting(mcm, "ActorInfoBars", "fInfoBarOffsetZ", fInfoBarOffsetZ);
 		ReadBoolSetting(mcm, "ActorInfoBars", "bInfoBarLevelColorOutline", bInfoBarLevelColorOutline);
 		ReadUInt32Setting(mcm, "ActorInfoBars", "uInfoBarLevelThreshold", (uint32_t&)uInfoBarLevelThreshold);
