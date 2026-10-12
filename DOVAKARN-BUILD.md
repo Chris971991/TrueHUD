@@ -16,8 +16,11 @@ in the floating info bar (`src/Widgets/ActorInfoBar.cpp`), the boss bar untouche
 
 ## Build used by Dovakarn
 
-- CommonLibSSE-NG: https://github.com/alandtse/CommonLibVR branch `ng` at `d970ed21ea` (23/12/2023, the version
-  TrueHUD 1.1.9 was released against), in `CommonLibSSEPath_NG`.
+- CommonLibSSE-NG: https://github.com/alandtse/CommonLibVR branch `ng` at `cab9f743f` ("fix: fix playercharacter and
+  controlmap offsets", 24/12/2023), in `CommonLibSSEPath_NG`. It must be this commit or later: the commit before it
+  (`d970ed21ea`) reads ControlMap's runtime data at 0xE8 on every AE build, but Skyrim 1.6.1130 and later have it at
+  0xF0, and a DLL built on it crashes at the first menu (HUDHandler::ProcessEvent(MenuOpenCloseEvent), the
+  contextPriorityStack read). TrueHUD 1.1.9's own DLL reads it as `cab9f743f` does (0xF0 from 1.6.1130).
 - vcpkg `cb2981c4e03d421fa03b9bb5044cd1986180e7e4`, triplet `x64-windows-static`, static C runtime (so the DLL does not
   depend on the player's Visual C++ runtime version).
 - Visual Studio 2026 (MSVC 14.51), CMake from Visual Studio:
