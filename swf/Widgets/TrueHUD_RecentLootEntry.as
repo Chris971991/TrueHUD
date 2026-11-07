@@ -30,12 +30,33 @@ class Widgets.TrueHUD_RecentLootEntry extends MovieClip
 	public var itemName: String;
 	public var itemCount: Number;
 
-	// Dovakarn: the entry's words in Dovakarn's gold-ink (#F2DFAE) instead of the field's white, and an icon the plugin left
-	// white (0xFFFFFF, its default for a kind without a colour of its own) in Dovakarn's gold (#D9B25F). Icons with a
-	// colour of their own (potions, soul gems, materials) keep it. The pill behind the entry is unchanged.
+	// Dovakarn: the entry's words in Dovakarn's gold-ink (#F2DFAE) instead of the field's white, and a plain icon in
+	// Dovakarn's gold (#D9B25F). Plain is white (0xFFFFFF, the plugin's default for a kind without a colour of its own) and
+	// every grey or metal shade SkyUI's table gives (weapons 0xA4A5BF, ammo and firewood 0xA89E8C, heavy armour 0x6B7585,
+	// ingots 0x828282): a colour less than PLAIN_SATURATION_PERCENT saturated. Soul gems keep SkyUI's pale violet, and
+	// coloured kinds (potions, gold coins, gems, leather, clothes) keep theirs. The pill behind the entry is unchanged.
 	static var DOVAKARN_TEXT_COLOR: Number = 0xF2DFAE;
 	static var DOVAKARN_ICON_COLOR: Number = 0xD9B25F;
 	static var PLAIN_ICON_COLOR: Number = 0xFFFFFF;
+	static var PLAIN_SATURATION_PERCENT: Number = 25;
+
+	static function isPlainIcon(a_color: Number, a_label: String): Boolean
+	{
+		if (a_label != undefined && String(a_label).indexOf("soulgem") != -1)
+		{
+			return false;
+		}
+		var r: Number = (a_color >> 16) & 0xFF;
+		var g: Number = (a_color >> 8) & 0xFF;
+		var b: Number = a_color & 0xFF;
+		var most: Number = Math.max(r, Math.max(g, b));
+		var least: Number = Math.min(r, Math.min(g, b));
+		if (most == 0)
+		{
+			return true;
+		}
+		return (most - least) * 100 < most * PLAIN_SATURATION_PERCENT;
+	}
 
 	public function TrueHUD_RecentLootEntry() 
 	{
@@ -101,7 +122,7 @@ class Widgets.TrueHUD_RecentLootEntry extends MovieClip
 		var colorTransform = new ColorTransform();
 		var transform = new Transform(MovieClip(ItemIcon));
 
-		colorTransform.rgb = iconColor == PLAIN_ICON_COLOR ? DOVAKARN_ICON_COLOR : iconColor;
+		colorTransform.rgb = isPlainIcon(iconColor, iconLabel) ? DOVAKARN_ICON_COLOR : iconColor;
 		transform.colorTransform = colorTransform;
 	}
 
@@ -171,6 +192,17 @@ class Widgets.TrueHUD_RecentLootEntry extends MovieClip
 		{
 			showHideTimeline.play(fRecentLootMessageDuration);
 		}
+	}
+
+	// Dovakarn: still shown (not yet fading out), and shown its full time again from now (the list's merge)
+	public function isShowing() : Boolean
+	{
+		return !bReadyToRemove && showHideTimeline.time() < fRecentLootMessageDuration;
+	}
+
+	public function refresh()
+	{
+		showHideTimeline.play(animDuration * 2);
 	}
 
 	public function isJustAdded() : Boolean

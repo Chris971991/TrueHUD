@@ -34,3 +34,16 @@ need Adobe Animate to publish, so the shipped SWF is built from the released one
    The result used by Dovakarn has sha256 `36c6cc0a0ec56b301aaa19b8aeb0096736bc4f60937e4dbd2bf5c5345a018e3d`. Against
    step 2's file, decompiling shows only `TrueHUD_RecentLootEntry.as` changed, and an XML dump of both (`-swf2xml`)
    differs in that class's one `DoInitAction` tag and nothing else.
+4. **Recent Loot: grey icons, the same item merged** (`dovakarn/1.1.9-loot-gold`, 8/11/2026):
+   `swf/ffdec-pickup/scripts/__Packages/Widgets/` holds FFDec's decompiled `TrueHUD_RecentLootEntry.as` and
+   `TrueHUD_RecentLootList.as` (from step 3's file) with the sources' changes: an icon is plain, and drawn in `#D9B25F`,
+   when its colour is less than 25% saturated (white and SkyUI's grey and metal shades), soul gems keeping their violet;
+   the same item arriving while its line still shows adds to that line, which moves to the top and shows its full time
+   again. Compile them into step 3's file (FFDec 26.2.0):
+
+   ```
+   java -jar ffdec-cli.jar -importScript TrueHUD_Widgets.patched.swf TrueHUD_Widgets.pickup.swf swf/ffdec-pickup
+   ```
+
+   The result used by Dovakarn has sha256 `6bbcd4071a2a8244d5be6d251071b4c08334f2b063b02387a0dd85a9a7f6ff9f`.
+   Decompiling it again and step 3's file shows only those two scripts changed.

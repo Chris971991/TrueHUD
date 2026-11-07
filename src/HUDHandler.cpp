@@ -235,6 +235,13 @@ HUDHandler::EventResult HUDHandler::ProcessEvent(const RE::MenuOpenCloseEvent* a
 		}
 	}
 
+	// Dovakarn: what was taken in a container, barter or gift menu shows once it closes
+	if (a_event && !a_event->opening &&
+		(a_event->menuName == RE::ContainerMenu::MENU_NAME || a_event->menuName == RE::BarterMenu::MENU_NAME ||
+			a_event->menuName == RE::GiftMenu::MENU_NAME)) {
+		HUDHandler::GetSingleton()->FlushHeldRecentLoot();
+	}
+
 	// Hide the widgets when a menu is open
 	if (const auto controlMap = RE::ControlMap::GetSingleton()) {
 		const auto& priorityStack = controlMap->GetRuntimeData().contextPriorityStack;
@@ -472,11 +479,27 @@ void HUDHandler::AddRecentLootMessage(RE::TESBoundObject* a_object, std::string_
 		return;
 	}
 
-	// Don't show message when those menus are open
+	// Dovakarn: the server's own pack being put back is not an arrival
+	if (IsRecentLootQuiet()) {
+		return;
+	}
+
+	// Don't show message when those menus are open. Dovakarn: hold it and show it once the menu closes, as what was taken
+	// there did arrive (FlushHeldRecentLoot, from the menu's close event); the same item taken twice is one line
 	if (Settings::bRecentLootHideInInventoryMenus &&
 		(RE::UI::GetSingleton()->IsMenuOpen(RE::BarterMenu::MENU_NAME) ||
 			RE::UI::GetSingleton()->IsMenuOpen(RE::ContainerMenu::MENU_NAME) ||
 			RE::UI::GetSingleton()->IsMenuOpen(RE::GiftMenu::MENU_NAME))) {
+		Locker locker(_lock);
+		for (auto& held : _heldLoot) {
+			if (held.object == a_object && held.name == a_name) {
+				held.count += a_count;
+				return;
+			}
+		}
+		if (_heldLoot.size() < 64) {
+			_heldLoot.push_back({ a_object, std::string(a_name), a_count });
+		}
 		return;
 	}
 
@@ -485,9 +508,44 @@ void HUDHandler::AddRecentLootMessage(RE::TESBoundObject* a_object, std::string_
 		return;
 	}
 
-	AddHUDTask([a_object, a_name, a_count](TrueHUDMenu& a_menu) {
-		a_menu.AddRecentLootMessage(a_object, a_name, a_count);
+	// Dovakarn: the name is copied, as the task runs later and a reference's display name can be gone by then
+	AddHUDTask([a_object, name = std::string(a_name), a_count](TrueHUDMenu& a_menu) {
+		a_menu.AddRecentLootMessage(a_object, name, a_count);
 	});
+}
+
+void HUDHandler::QuietRecentLoot(float a_seconds)
+{
+	const auto now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+	const float seconds = std::clamp(a_seconds, 0.f, 60.f);
+	_quietUntilMs = seconds > 0.f ? now + static_cast<int64_t>(seconds * 1000.f) : 0;
+}
+
+bool HUDHandler::IsRecentLootQuiet() const
+{
+	const auto until = _quietUntilMs.load();
+	if (until == 0) {
+		return false;
+	}
+	const auto now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+	return now < until;
+}
+
+void HUDHandler::FlushHeldRecentLoot()
+{
+	std::vector<HeldLoot> held;
+	{
+		Locker locker(_lock);
+		held.swap(_heldLoot);
+	}
+	if (!Settings::bEnableRecentLoot) {
+		return;
+	}
+	for (auto& item : held) {
+		AddHUDTask([object = item.object, name = std::move(item.name), count = item.count](TrueHUDMenu& a_menu) {
+			a_menu.AddRecentLootMessage(object, name, count);
+		});
+	}
 }
 
 void HUDHandler::AddFloatingWorldTextWidget(std::string a_text, uint32_t a_color, float a_duration, bool a_bSpecial, RE::NiPoint3 a_worldPosition)

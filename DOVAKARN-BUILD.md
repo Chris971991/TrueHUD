@@ -35,3 +35,18 @@ cmake --build build-mt --config Release
 
 The widget it pairs with is `swf/ffdec/BUILD.md`'s `TrueHUD_Widgets.swf` (its ActionScript calls are unchanged).
 The sha256 of the DLL Dovakarn serves is in its commit message on this branch and in Dovakarn's player file list.
+
+## Recent Loot (branch `dovakarn/1.1.9-loot-gold`, 8/11/2026)
+
+Built the same way, from this branch (`src/HUDHandler.cpp`, `src/Papyrus.cpp`):
+
+- **`DovakarnLoot.Quiet(float afSeconds)`**, a global Papyrus native (`scripts/source/DovakarnLoot.psc`, compiled to
+  `Scripts/DovakarnLoot.pex`, which must ship with the DLL): no Recent Loot line is made for that many seconds (0 ends
+  it). Dovakarn's multiplayer client calls it while it puts the server's saved inventory back into the player's (the login,
+  a load, a character switch, a correcting pass), so the list shows only real arrivals, not the whole pack.
+- **Container, barter and gift menus:** with `bRecentLootHideInInventoryMenus` on, what the player gains while one of
+  them is open is held (the same item added up) and shown when it closes, instead of never.
+- The item's name is copied into the HUD task (it was a view of a reference's display name, read a frame later).
+
+Dovakarn's build: sha256 `aab6a799c6d055167a225299d84f8a2565178fee2aa63dc5048c4f4e21724c8e` (CommonLibSSE-NG `cab9f743f`,
+`-DTRUEHUD_DOVAKARN_DEFAULTS=ON`, as above). It pairs with `swf/ffdec/BUILD.md` step 4's `TrueHUD_Widgets.swf`.

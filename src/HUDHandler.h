@@ -70,6 +70,12 @@ public:
 	void AddRecentLootWidget();
 	void RemoveRecentLootWidget();
 	void AddRecentLootMessage(RE::TESBoundObject* a_object, std::string_view a_name, uint32_t a_count);
+	// Dovakarn: no Recent Loot line for the next a_seconds (0 ends it at once). A multiplayer client puts the server's saved
+	// pack back into the player's inventory at login and after a load; those adds are not arrivals (Papyrus DovakarnLoot.Quiet)
+	void QuietRecentLoot(float a_seconds);
+	bool IsRecentLootQuiet() const;
+	// Dovakarn: what is taken in a container, barter or gift menu waits for the menu to close and then shows
+	void FlushHeldRecentLoot();
 
 	void AddFloatingWorldTextWidget(std::string a_text, uint32_t a_color, float a_duration, bool a_bSpecial, RE::NiPoint3 a_worldPosition);
 	void AddFloatingScreenTextWidget(std::string a_text, uint32_t a_color, float a_duration, bool a_bSpecial, RE::NiPoint2 a_screenPosition);
@@ -155,5 +161,14 @@ private:
 		float timeElapsed = 0.f;
 	};
 	std::unordered_map<RE::ObjectRefHandle, DamageStack> _stackingDamage;
+
+	struct HeldLoot
+	{
+		RE::TESBoundObject* object;
+		std::string name;
+		uint32_t count;
+	};
+	std::vector<HeldLoot> _heldLoot;
+	std::atomic<int64_t> _quietUntilMs{ 0 };
 	constexpr static float _stackingPeriodDuration = 0.5f;
 };

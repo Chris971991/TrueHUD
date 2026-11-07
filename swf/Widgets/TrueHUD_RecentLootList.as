@@ -73,6 +73,26 @@ class Widgets.TrueHUD_RecentLootList extends MovieClip
 			}
 		}
 
+		// Dovakarn: the same item arriving again while its line still shows adds to that line ("Gold (3)" then 2 more is
+		// "Gold (5)"), which moves to the top and shows its full time again. TrueHUD itself merged only adds made in the
+		// same frame (isJustAdded)
+		for (var j:Number = 0; j < currentMessageArray.length; j++)
+		{
+			var shown = currentMessageArray[j];
+			if (shown.itemName == a_itemName && shown.isShowing())
+			{
+				shown.addCount(a_itemCount);
+				shown.refresh();
+				if (j > 0)
+				{
+					currentMessageArray.splice(j, 1);
+					currentMessageArray.unshift(shown);
+					updatePositions();
+				}
+				return;
+			}
+		}
+
 		if (unusedMessageArray.length == 0)
 		{
 			if (currentMessageArray.length > uRecentLootMaxMessageCount)
