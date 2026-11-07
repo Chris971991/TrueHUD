@@ -47,3 +47,37 @@ need Adobe Animate to publish, so the shipped SWF is built from the released one
 
    The result used by Dovakarn has sha256 `6bbcd4071a2a8244d5be6d251071b4c08334f2b063b02387a0dd85a9a7f6ff9f`.
    Decompiling it again and step 3's file shows only those two scripts changed.
+5. **Recent Loot in the look of Dovakarn's HUD compass** (`dovakarn/1.1.9-loot-gold`, 8/11/2026):
+   `swf/ffdec-style/scripts/__Packages/Widgets/` holds step 4's two scripts with the sources' changes: TrueHUD's pill and
+   its white half-outline (the unnamed clip at the entry's timeline depth 1) and the `ItemText` field are hidden; each
+   line is drawn on a night band (`#0A0E13`, 0 to 62%) between two gold hairlines (`#9C8757` to `#D9B25F`, 0 to 80%)
+   running out to nothing on the left and again past the icon, the name in Sovngarde Light 22 (the regular weight of
+   the compass's font) in `#F2DFAE` and its count in `#C4B07F` with a heavy drop shadow, a long name stepping down to 21
+   and then cut with "...", the icon (27) on a soft night disc, gold coins in `#FFDF85`; rows 40 apart. Every size is a
+   unit of Dovakarn's own HUD movie (1.44 px at 1440p at UI Scale 100%), drawn at `_root.dovLootScale` TrueHUD units each:
+   Dovakarn's client writes it into TrueHUD's movie from the screen and the player's UI Scale (0.72 at 100% on a screen
+   1000 px tall or more, the widget's default when nothing wrote it), and the list scales every line and its row spacing
+   by it each frame it changes. Compile them into step 4's file (FFDec 26.2.1), then embed the font the new text field
+   asks for:
+
+   ```
+   java -jar ffdec-cli.jar -importScript TrueHUD_Widgets.pickup.swf TrueHUD_Widgets.style-scripts.swf swf/ffdec-style
+   node swf/ffdec-style/add-fonts.cjs TrueHUD_Widgets.style-scripts.swf hudmenu.swf TrueHUD_Widgets.style.swf "Dov Sovngarde Light"
+   ```
+
+   `add-fonts.cjs` (Node 18, no packages) copies the named DefineFont3 tag, its DefineFontAlignZones and DefineFontName,
+   byte for byte, from a donor SWF into the next free character id, exports it under its name and puts it after
+   SetBackgroundColor; nothing else changes. The donor is Dovakarn's HUD Menu movie, `Data/Interface/hudmenu.swf`
+   (sha256 `47e28b662b6588e479cad12718ff9e1627323431810eb393208f80aa173e15b0`), whose compass and notes draw this family: Sovngarde
+   Light (Copyright (c) 2016, mjorka, mjorka.net, SIL Open Font License 1.1) as "Dov Sovngarde Light", printable ASCII, Latin-1,
+   the curly quotes and the Russian alphabet. A font has to be inside this movie: TrueHUD's movie cannot reach the fonts
+   of another movie, and Skyrim's font library (`fontconfig.txt`, `gfxfontlib.swf`) holds only Skyrim's faces.
+
+   The result used by Dovakarn has sha256 `59307b3c07b40c12621f1ccebd60b1b50a5c88cf53a5486385aeda541a90312a`; the same
+   commands give the same bytes again. Decompiling it and step 4's file shows only those two scripts changed.
+
+   `swf/ffdec-style/harness/scripts/frame_1/DoAction.as` is an offline stage for the list (compile it with
+   `-importScript` into any one-frame AS2 SWF of 1280 x 720): it loads the widgets beside it (FlashVar `scale` sets `_root.dovLootScale`) and adds six lines, a soul
+   gem, a Russian name, a long potion, a potion, arrows and gold. Dovakarn renders it in Ruffle (the workspace's dovui
+   `tools/render.cjs`); Ruffle has no `textAutoSize`, so TrueHUD's own file cuts a long name there where the game
+   shrinks it.

@@ -12,7 +12,9 @@ class Widgets.TrueHUD_RecentLootList extends MovieClip
 
 	var messageCount = 0;
 
-	var yOffset = 34;
+	// Dovakarn: rows 40 of Dovakarn's HUD units apart, at the entries' UI scale (TrueHUD_RecentLootEntry.scaleNow)
+	var yOffset = 40;
+	var lootScale = 0;
 
 	public function TrueHUD_RecentLootList() 
 	{
@@ -124,12 +126,36 @@ class Widgets.TrueHUD_RecentLootList extends MovieClip
 		for (var i:Number = 0; i < currentMessageArray.length; i++) 
 		{
 			var entry = currentMessageArray[i];
-			entry.setY(yOffset * direction * i);
+			entry.setY(yOffset * scaleNow() * direction * i);
 		}
+	}
+
+	private function scaleNow(): Number
+	{
+		if (lootScale <= 0)
+		{
+			lootScale = TrueHUD_RecentLootEntry.scaleNow();
+		}
+		return lootScale;
 	}
 
 	public function update()
 	{
+		// Dovakarn: the player's UI scale (or the screen) moved: every line takes it, and the rows close up again
+		var s: Number = TrueHUD_RecentLootEntry.scaleNow();
+		if (s != lootScale)
+		{
+			lootScale = s;
+			for (var k: Number = 0; k < currentMessageArray.length; k++)
+			{
+				currentMessageArray[k].applyScale(s);
+			}
+			for (var u: Number = 0; u < unusedMessageArray.length; u++)
+			{
+				unusedMessageArray[u].applyScale(s);
+			}
+			updatePositions();
+		}
 		var bShouldUpdatePositions = false;
 		for (var i:Number = 0; i < currentMessageArray.length; i++) 
 		{
