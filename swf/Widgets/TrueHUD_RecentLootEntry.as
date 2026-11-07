@@ -30,6 +30,13 @@ class Widgets.TrueHUD_RecentLootEntry extends MovieClip
 	public var itemName: String;
 	public var itemCount: Number;
 
+	// Dovakarn: the entry's words in Dovakarn's gold-ink (#F2DFAE) instead of the field's white, and an icon the plugin left
+	// white (0xFFFFFF, its default for a kind without a colour of its own) in Dovakarn's gold (#D9B25F). Icons with a
+	// colour of their own (potions, soul gems, materials) keep it. The pill behind the entry is unchanged.
+	static var DOVAKARN_TEXT_COLOR: Number = 0xF2DFAE;
+	static var DOVAKARN_ICON_COLOR: Number = 0xD9B25F;
+	static var PLAIN_ICON_COLOR: Number = 0xFFFFFF;
+
 	public function TrueHUD_RecentLootEntry() 
 	{
 		// constructor code
@@ -94,7 +101,7 @@ class Widgets.TrueHUD_RecentLootEntry extends MovieClip
 		var colorTransform = new ColorTransform();
 		var transform = new Transform(MovieClip(ItemIcon));
 
-		colorTransform.rgb = iconColor;
+		colorTransform.rgb = iconColor == PLAIN_ICON_COLOR ? DOVAKARN_ICON_COLOR : iconColor;
 		transform.colorTransform = colorTransform;
 	}
 
@@ -135,6 +142,8 @@ class Widgets.TrueHUD_RecentLootEntry extends MovieClip
 		ItemText.html = true;
 		ItemText.textAutoSize = "shrink";
 		ItemText.htmlText = name;
+		// (after the text: setting htmlText starts again from the field's own white)
+		ItemText.textColor = DOVAKARN_TEXT_COLOR;
 	}
 
 	public function addCount(a_itemCount: Number)
