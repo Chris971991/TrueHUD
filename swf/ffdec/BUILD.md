@@ -52,8 +52,8 @@ need Adobe Animate to publish, so the shipped SWF is built from the released one
    its white half-outline (the unnamed clip at the entry's timeline depth 1) and the `ItemText` field are hidden; each
    line is drawn on a night band (`#0A0E13`, 0 to 62%) between two gold hairlines (`#9C8757` to `#D9B25F`, 0 to 80%)
    running out to nothing on the left and again past the icon, the name in Sovngarde Light 22 (the regular weight of
-   the compass's font) in `#F2DFAE` and its count in `#C4B07F` with a heavy drop shadow, a long name stepping down to 21
-   and then cut with "...", the icon (27) on a soft night disc, gold coins in `#FFDF85`; rows 40 apart. Every size is a
+   the compass's font) with its count in `#F0EEE7`, Dovakarn's off-white (the kit's ink), with a heavy drop shadow, a long name stepping down to 21
+   and then cut with "...", the icon (27) on a soft night disc, a plain or grey icon and gold coins in `#F0EEE7` (potions and soul gems keep SkyUI's colours); rows 40 apart. Every size is a
    unit of Dovakarn's own HUD movie (1.44 px at 1440p at UI Scale 100%), drawn at `_root.dovLootScale` TrueHUD units each:
    Dovakarn's client writes it into TrueHUD's movie from the screen and the player's UI Scale (0.72 at 100% on a screen
    1000 px tall or more, the widget's default when nothing wrote it), and the list scales every line and its row spacing
@@ -73,7 +73,7 @@ need Adobe Animate to publish, so the shipped SWF is built from the released one
    the curly quotes and the Russian alphabet. A font has to be inside this movie: TrueHUD's movie cannot reach the fonts
    of another movie, and Skyrim's font library (`fontconfig.txt`, `gfxfontlib.swf`) holds only Skyrim's faces.
 
-   The result used by Dovakarn has sha256 `59307b3c07b40c12621f1ccebd60b1b50a5c88cf53a5486385aeda541a90312a`; the same
+   The result used by Dovakarn has sha256 `32ed673414c2f5cdcce3984843a5e582979debc421a951f7738913cb8f9fb50a`; the same
    commands give the same bytes again. Decompiling it and step 4's file shows only those two scripts changed.
 
    `swf/ffdec-style/harness/scripts/frame_1/DoAction.as` is an offline stage for the list (compile it with

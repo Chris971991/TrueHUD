@@ -33,21 +33,20 @@ class Widgets.TrueHUD_RecentLootEntry extends MovieClip
 	// Dovakarn: the entry in the look of Dovakarn's own HUD compass (the workspace's local-tools/dovui hudmenu, HudCompass).
 	// TrueHUD's pill and its white half-outline are hidden. Each line stands on a night band (#0A0E13, 0 to 62% over the RUN
 	// before the words, 62% to the icon's end, then out to nothing over END) between two gold hairlines (#9C8757 to #D9B25F,
-	// 0 to 80% at the icon and out again), the item's name in Sovngarde Light, the compass font's regular weight (Chris 8/11/2026: "unbold would look nicer"; embedded in TrueHUD_Widgets.swf as "Dov Sovngarde Light", swf/ffdec/BUILD.md step 5)
-	// in gold-ink #F2DFAE, its count in gold-dim #C4B07F, with the heavy drop shadow of Dovakarn's HUD words. A long name steps
-	// down from 18 to 14, then is cut with "...". The icon stands on a soft night disc: a plain icon (white, or a grey or metal
-	// shade under PLAIN_SATURATION_PERCENT saturation) in gold #D9B25F, gold coins in gold-bright #FFDF85, soul gems and the
+	// 0 to 80% at the icon and out again), the item's name in Sovngarde Light, the compass font's regular weight (Chris 8/11/2026: "unbold would look nicer"; embedded in TrueHUD_Widgets.swf as "Dov Sovngarde Light", swf/ffdec/BUILD.md step 5), in our UI's off-white
+	// name and count in our UI's off-white #F0EEE7 (the kit's ink, as the HUD's arrow count; Chris 8/11: "Put them back to the off
+	// white please that our UI uses. It contrasts well"), with the heavy drop shadow of Dovakarn's HUD words. Sizes below. The
+	// icon stands on a soft night disc: a plain icon (white, or a grey or metal shade under PLAIN_SATURATION_PERCENT
+	// saturation) and gold coins in that off-white, soul gems and the
 	// other coloured kinds keep SkyUI's colour.
-	static var DOVAKARN_ICON_COLOR: Number = 0xD9B25F;
+	static var DOVAKARN_ICON_COLOR: Number = 0xF0EEE7;
 	static var PLAIN_ICON_COLOR: Number = 0xFFFFFF;
 	static var PLAIN_SATURATION_PERCENT: Number = 25;
 	static var FONT: String = "Dov Sovngarde Light";
 	static var NIGHT: Number = 0x0A0E13;
 	static var GOLD: Number = 0xD9B25F;
-	static var GOLD_INK: Number = 0xF2DFAE;
-	static var GOLD_DIM: Number = 0xC4B07F;
+	static var INK: Number = 0xF0EEE7;
 	static var GOLD_BORDER: Number = 0x9C8757;
-	static var GOLD_BRIGHT: Number = 0xFFDF85;
 	static var COIN_LABEL: String = "misc_gold";
 	// Sizes are units of Dovakarn's HUD (local-tools/dovui hudmenu: 1.44 px at 1440p at UI Scale 100%; the arrow count is Light
 	// 22), drawn at dovLootScale: the TrueHUD units one of them takes, which the client writes into TrueHUD's movie
@@ -94,7 +93,7 @@ class Widgets.TrueHUD_RecentLootEntry extends MovieClip
 	{
 		if (a_label == COIN_LABEL)
 		{
-			return GOLD_BRIGHT;
+			return INK;
 		}
 		return isPlainIcon(a_color, a_label) ? DOVAKARN_ICON_COLOR : a_color;
 	}
@@ -268,10 +267,10 @@ class Widgets.TrueHUD_RecentLootEntry extends MovieClip
 	{
 		var words: String = a_name + a_count;
 		dovName.text = words;
-		dovName.setTextFormat(format(a_size, GOLD_INK));
+		dovName.setTextFormat(format(a_size, INK));
 		if (a_count.length > 0)
 		{
-			dovName.setTextFormat(a_name.length, words.length, format(a_size, GOLD_DIM));
+			dovName.setTextFormat(a_name.length, words.length, format(a_size, INK));
 		}
 		return dovName.textWidth;
 	}

@@ -16,16 +16,14 @@ class Widgets.TrueHUD_RecentLootEntry extends MovieClip
    var bIconsLoaded = false;
    var bFresh = true;
    var bReadyToRemove = false;
-   static var DOVAKARN_ICON_COLOR = 14266975;
+   static var DOVAKARN_ICON_COLOR = 15789799;
    static var PLAIN_ICON_COLOR = 16777215;
    static var PLAIN_SATURATION_PERCENT = 25;
    static var FONT = "Dov Sovngarde Light";
    static var NIGHT = 658963;
    static var GOLD = 14266975;
-   static var GOLD_INK = 15916974;
-   static var GOLD_DIM = 12890239;
+   static var INK = 15789799;
    static var GOLD_BORDER = 10258263;
-   static var GOLD_BRIGHT = 16768901;
    static var COIN_LABEL = "misc_gold";
    static var SIZE = 22;
    static var LEAST_SIZE = 21;
@@ -174,7 +172,7 @@ class Widgets.TrueHUD_RecentLootEntry extends MovieClip
    {
       if(a_label == Widgets.TrueHUD_RecentLootEntry.COIN_LABEL)
       {
-         return Widgets.TrueHUD_RecentLootEntry.GOLD_BRIGHT;
+         return Widgets.TrueHUD_RecentLootEntry.INK;
       }
       return !Widgets.TrueHUD_RecentLootEntry.isPlainIcon(a_color,a_label) ? a_color : Widgets.TrueHUD_RecentLootEntry.DOVAKARN_ICON_COLOR;
    }
@@ -212,10 +210,10 @@ class Widgets.TrueHUD_RecentLootEntry extends MovieClip
    {
       var _loc2_ = a_name + a_count;
       this.dovName.text = _loc2_;
-      this.dovName.setTextFormat(this.format(a_size,Widgets.TrueHUD_RecentLootEntry.GOLD_INK));
+      this.dovName.setTextFormat(this.format(a_size,Widgets.TrueHUD_RecentLootEntry.INK));
       if(a_count.length > 0)
       {
-         this.dovName.setTextFormat(a_name.length,_loc2_.length,this.format(a_size,Widgets.TrueHUD_RecentLootEntry.GOLD_DIM));
+         this.dovName.setTextFormat(a_name.length,_loc2_.length,this.format(a_size,Widgets.TrueHUD_RecentLootEntry.INK));
       }
       return this.dovName.textWidth;
    }
