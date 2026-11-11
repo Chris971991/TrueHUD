@@ -124,6 +124,13 @@ if(TRUEHUD_DOVAKARN_DEFAULTS)
 	target_compile_definitions("${PROJECT_NAME}" PRIVATE TRUEHUD_DOVAKARN_DEFAULTS)
 endif()
 
+# Dovakarn's dev build: the bar read-back (_root.dovBars in the menu's movie) and the bar log (bInfoBarLog). Everything
+# behind DOVAKARN_DEV in the sources; the build players get is made without it and holds none of that code or its strings
+option(TRUEHUD_DOVAKARN_DEV "Build Dovakarn's dev DLL: the bar read-back and the bar log (DOVAKARN_DEV)" OFF)
+if(TRUEHUD_DOVAKARN_DEV)
+	target_compile_definitions("${PROJECT_NAME}" PRIVATE DOVAKARN_DEV)
+endif()
+
 target_precompile_headers(
 	"${PROJECT_NAME}"
 	PRIVATE

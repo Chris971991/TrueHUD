@@ -84,6 +84,26 @@ bool Utils::IsPlayerTeammateOrSummon(RE::Actor* a_actor)
 	return false;
 }
 
+#ifdef DOVAKARN_DEV
+std::string Utils::Describe(RE::TESObjectREFR* a_ref)
+{
+	if (!a_ref) {
+		return "none";
+	}
+	const char* name = a_ref->GetDisplayFullName();
+	return fmt::format("{:08x} {}", a_ref->GetFormID(), name ? name : "");
+}
+
+std::string Utils::Describe(RE::ObjectRefHandle a_handle)
+{
+	if (!a_handle) {
+		return "none";
+	}
+	auto ref = a_handle.get();
+	return ref ? Describe(ref.get()) : fmt::format("gone (handle {:x})", a_handle.native_handle());
+}
+#endif
+
 bool Utils::IsBehindPlayerCamera(const RE::NiPoint3& a_pos)
 {
 	auto playerCamera = RE::PlayerCamera::GetSingleton();

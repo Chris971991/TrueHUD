@@ -49,20 +49,34 @@ HUDHandler::EventResult HUDHandler::ProcessEvent(const RE::TESCombatEvent* a_eve
 				}
 			}
 
+#ifdef DOVAKARN_DEV
+			if (Settings::bInfoBarLog && (bIsRelevant || eventActor->IsPlayerRef())) {
+				auto actor = eventActor->As<RE::Actor>();
+				logger::info("combat event: [{}] state {} against [{}]; hostile to player {}, in combat {}, relevant {}", Utils::Describe(eventActor.get()), static_cast<uint32_t>(a_event->newState.get()), Utils::Describe(eventTarget.get()),
+					actor ? actor->IsHostileToActor(RE::PlayerCharacter::GetSingleton()) : false, actor ? actor->IsInCombat() : false, bIsRelevant);
+			}
+#endif
+
 			if (bIsRelevant) {
 				auto actorHandle = eventActor->GetHandle();
 				if (a_event->newState == CombatState::kCombat) {
-					bool bHasBossBarAlready = HUDHandler::GetTrueHUDMenu()->HasBossInfoBar(actorHandle);
+					// Dovakarn: no menu (the HUD is closed), nothing to ask or add to; TrueHUD read through a null menu here
+					auto trueHUDMenu = HUDHandler::GetTrueHUDMenu();
+					if (!trueHUDMenu) {
+						return EventResult::kContinue;
+					}
+
+					bool bHasBossBarAlready = trueHUDMenu->HasBossInfoBar(actorHandle);
 					if (bHasBossBarAlready) {
 						return EventResult::kContinue;
 					}
 
+					auto playerCharacter = RE::PlayerCharacter::GetSingleton();
+					auto actor = eventActor->As<RE::Actor>();
+
 					if (Settings::bEnableBossBars && CheckActorForBoss(actorHandle)) {  // Add a boss bar
 						HUDHandler::GetSingleton()->AddBossInfoBar(actorHandle);
-					} else if (bInfoBarsEnabled) {  // Not a boss, add a normal info bar
-						auto playerCharacter = RE::PlayerCharacter::GetSingleton();
-						auto actor = eventActor->As<RE::Actor>();
-
+					} else if (bInfoBarsEnabled && actor && playerCharacter) {  // Not a boss, add a normal info bar
 						if (actor->IsHostileToActor(playerCharacter)) {
 							if (Settings::uInfoBarDisplayHostiles > InfoBarsDisplayMode::kOnHit) {
 								HUDHandler::GetSingleton()->AddActorInfoBar(actorHandle);
@@ -81,8 +95,9 @@ HUDHandler::EventResult HUDHandler::ProcessEvent(const RE::TESCombatEvent* a_eve
 						HUDHandler::GetSingleton()->RemoveBossInfoBar(actorHandle, WidgetRemovalMode::Normal);
 					}
 
+					// Dovakarn: a bar a fight with the player still keeps (NoteActorFight) stays for its keep time
 					if (bInfoBarsEnabled) {
-						HUDHandler::GetSingleton()->RemoveActorInfoBar(actorHandle, WidgetRemovalMode::Normal);
+						HUDHandler::GetSingleton()->RemoveActorInfoBarOnCombatEnd(actorHandle);
 					}
 				}
 			}
@@ -176,8 +191,35 @@ HUDHandler::EventResult HUDHandler::ProcessEvent(const RE::TESHitEvent* a_event,
 					bool bTargetPlayer = targetActor->IsPlayerRef();
 					bool bTargetPlayerTeammate = Utils::IsPlayerTeammateOrSummon(targetActor);
 
+					if (!(bCausePlayer || bCausePlayerTeammate || bTargetPlayer || bTargetPlayerTeammate)) {
+						return EventResult::kContinue;
+					}
+
+					// Dovakarn: no menu (the HUD is closed), nothing to ask or add to; TrueHUD read through a null menu here
+					auto trueHUDMenu = HUDHandler::GetTrueHUDMenu();
+					auto playerCharacter = RE::PlayerCharacter::GetSingleton();
+					if (!trueHUDMenu || !playerCharacter) {
+						return EventResult::kContinue;
+					}
+
+#ifdef DOVAKARN_DEV
+					if (Settings::bInfoBarLog) {
+						auto other = (bCausePlayer || bCausePlayerTeammate) ? targetActor : causeActor;
+						logger::info("hit event: [{}] hit [{}] with {:08x}; the other one: hostile to player {}, in combat {}, {:.0f} units away, has a bar {}", Utils::Describe(causeActor), Utils::Describe(targetActor), a_event->source,
+							other->IsHostileToActor(playerCharacter), other->IsInCombat(), playerCharacter->GetPosition().GetDistance(other->GetPosition()),
+							trueHUDMenu->HasActorInfoBar(other == targetActor ? targetActorHandle : causeActorHandle));
+					}
+#endif
+
+					// Dovakarn: TrueHUD adds a bar on a hit only for an actor the game counts as in combat, so a still or
+					// unaware target, another player's copy and an NPC another game hosts got none however often they were
+					// hit (11/11/2026: 12 Flames hits on a still wolf, no bar). A hit by the player itself, or on the player
+					// itself, now adds the bar at once and keeps it for fInfoBarFightKeepTime (NoteActorFight), in combat
+					// or not. Teammates' hits keep TrueHUD's rule, and so does everything while the keep time is 0
+					const bool bFightsEnabled = Settings::fInfoBarFightKeepTime > 0.f;
+
 					if (bCausePlayer || bCausePlayerTeammate) {
-						bool bHasBossBarAlready = HUDHandler::GetTrueHUDMenu()->HasBossInfoBar(targetActorHandle);
+						bool bHasBossBarAlready = trueHUDMenu->HasBossInfoBar(targetActorHandle);
 						if (bHasBossBarAlready) {
 							return EventResult::kContinue;
 						}
@@ -185,18 +227,21 @@ HUDHandler::EventResult HUDHandler::ProcessEvent(const RE::TESHitEvent* a_event,
 						if (Settings::bEnableBossBars && targetActor->IsInCombat() && CheckActorForBoss(targetActorHandle)) {
 							HUDHandler::GetSingleton()->AddBossInfoBar(targetActorHandle);
 						} else if (bInfoBarsEnabled) {  // Not a boss, add a normal info bar
-							if (targetActor->IsHostileToActor(RE::PlayerCharacter::GetSingleton())) {
-								if (Settings::uInfoBarDisplayHostiles > InfoBarsDisplayMode::kNever && targetActor->IsInCombat()) {
-									HUDHandler::GetSingleton()->AddActorInfoBar(targetActorHandle);
-								}
-							} else if (!bTargetPlayerTeammate && Settings::uInfoBarDisplayOthers > InfoBarsDisplayMode::kNever) {  // don't show info bars on teammates when hit by player
-								if (Settings::uInfoBarDisplayOthers > InfoBarsDisplayMode::kNever && targetActor->IsInCombat()) {
-									HUDHandler::GetSingleton()->AddActorInfoBar(targetActorHandle);
-								}
+							bool bShowsBars = false;
+							if (targetActor->IsHostileToActor(playerCharacter)) {
+								bShowsBars = Settings::uInfoBarDisplayHostiles > InfoBarsDisplayMode::kNever;
+							} else if (!bTargetPlayerTeammate) {  // don't show info bars on teammates when hit by player
+								bShowsBars = Settings::uInfoBarDisplayOthers > InfoBarsDisplayMode::kNever;
+							}
+
+							if (bShowsBars && bCausePlayer && bFightsEnabled) {
+								HUDHandler::GetSingleton()->NoteActorFight(targetActorHandle);
+							} else if (bShowsBars && targetActor->IsInCombat()) {
+								HUDHandler::GetSingleton()->AddActorInfoBar(targetActorHandle);
 							}
 						}
 					} else if (bTargetPlayer || bTargetPlayerTeammate) {
-						bool bHasBossBarAlready = HUDHandler::GetTrueHUDMenu()->HasBossInfoBar(causeActorHandle);
+						bool bHasBossBarAlready = trueHUDMenu->HasBossInfoBar(causeActorHandle);
 						if (bHasBossBarAlready) {
 							return EventResult::kContinue;
 						}
@@ -204,14 +249,17 @@ HUDHandler::EventResult HUDHandler::ProcessEvent(const RE::TESHitEvent* a_event,
 						if (Settings::bEnableBossBars && causeActor->IsInCombat() && CheckActorForBoss(causeActorHandle)) {
 							HUDHandler::GetSingleton()->AddBossInfoBar(causeActorHandle);
 						} else if (bInfoBarsEnabled) {  // Not a boss, add a normal info bar
-							if (causeActor->IsHostileToActor(RE::PlayerCharacter::GetSingleton())) {
-								if (Settings::uInfoBarDisplayHostiles > InfoBarsDisplayMode::kNever && causeActor->IsInCombat()) {
-									HUDHandler::GetSingleton()->AddActorInfoBar(causeActorHandle);
-								}
-							} else if (!bCausePlayerTeammate && Settings::uInfoBarDisplayOthers > InfoBarsDisplayMode::kNever) {  // don't show info bars on teammates when they hit player
-								if (Settings::uInfoBarDisplayOthers > InfoBarsDisplayMode::kNever && causeActor->IsInCombat()) {
-									HUDHandler::GetSingleton()->AddActorInfoBar(causeActorHandle);
-								}
+							bool bShowsBars = false;
+							if (causeActor->IsHostileToActor(playerCharacter)) {
+								bShowsBars = Settings::uInfoBarDisplayHostiles > InfoBarsDisplayMode::kNever;
+							} else if (!bCausePlayerTeammate) {  // don't show info bars on teammates when they hit player
+								bShowsBars = Settings::uInfoBarDisplayOthers > InfoBarsDisplayMode::kNever;
+							}
+
+							if (bShowsBars && bTargetPlayer && bFightsEnabled) {
+								HUDHandler::GetSingleton()->NoteActorFight(causeActorHandle);
+							} else if (bShowsBars && causeActor->IsInCombat()) {
+								HUDHandler::GetSingleton()->AddActorInfoBar(causeActorHandle);
 							}
 						}
 					}
@@ -330,6 +378,12 @@ void HUDHandler::SetTarget(RE::ObjectRefHandle a_actorHandle)
 		a_menu.SetTarget(a_actorHandle);
 	});
 
+#ifdef DOVAKARN_DEV
+	if (Settings::bInfoBarLog && _currentTarget != a_actorHandle) {
+		logger::info("target: [{}]", Utils::Describe(a_actorHandle));
+	}
+#endif
+
 	_currentTarget = a_actorHandle;
 }
 
@@ -342,6 +396,12 @@ void HUDHandler::SetSoftTarget(RE::ObjectRefHandle a_actorHandle)
 	AddHUDTask([a_actorHandle](TrueHUDMenu& a_menu) {
 		a_menu.SetSoftTarget(a_actorHandle);
 	});
+
+#ifdef DOVAKARN_DEV
+	if (Settings::bInfoBarLog && _currentSoftTarget != a_actorHandle) {
+		logger::info("soft target: [{}]", Utils::Describe(a_actorHandle));
+	}
+#endif
 
 	_currentSoftTarget = a_actorHandle;
 }
@@ -363,7 +423,29 @@ void HUDHandler::AddActorInfoBar(RE::ObjectRefHandle a_actorHandle)
 
 	if (a_actorHandle) {
 		AddHUDTask([a_actorHandle](TrueHUDMenu& a_menu) {
-			a_menu.AddActorInfoBar(a_actorHandle);
+			[[maybe_unused]] const bool bAdded = a_menu.AddActorInfoBar(a_actorHandle);
+			DOV_BAR_LOG("bar asked for [{}]: {}", Utils::Describe(a_actorHandle), bAdded ? "added" : "not added (it has one, or the movie gave no widget)");
+		});
+	}
+}
+
+// Dovakarn: the player hit this actor or was hit by it (the hit event, on whichever thread the game raises it). Only the
+// handle crosses to the menu's thread, as a HUD task under _lock like every other request; the bar and its keep time are
+// touched there alone (TrueHUDMenu::NoteActorFight)
+void HUDHandler::NoteActorFight(RE::ObjectRefHandle a_actorHandle)
+{
+	if (!Settings::bEnableActorInfoBars) {
+		return;
+	}
+
+	if (a_actorHandle.native_handle() == 0x100000) {
+		return;
+	}
+
+	if (a_actorHandle) {
+		AddHUDTask([a_actorHandle](TrueHUDMenu& a_menu) {
+			[[maybe_unused]] const bool bKept = a_menu.NoteActorFight(a_actorHandle);
+			DOV_BAR_LOG("fight noted [{}]: {}", Utils::Describe(a_actorHandle), bKept ? "its bar is kept" : "no bar (it has a boss bar, or the movie gave no widget)");
 		});
 	}
 }
@@ -372,7 +454,24 @@ void HUDHandler::RemoveActorInfoBar(RE::ObjectRefHandle a_actorHandle, WidgetRem
 {
 	if (a_actorHandle) {
 		AddHUDTask([a_actorHandle, a_removalMode](TrueHUDMenu& a_menu) {
-			a_menu.RemoveActorInfoBar(a_actorHandle, a_removalMode);
+			[[maybe_unused]] const bool bHad = a_menu.RemoveActorInfoBar(a_actorHandle, a_removalMode);
+#ifdef DOVAKARN_DEV
+			if (bHad) {
+				DOV_BAR_LOG("bar removal asked for [{}], mode {}", Utils::Describe(a_actorHandle), static_cast<uint32_t>(a_removalMode));
+			}
+#endif
+		});
+	}
+}
+
+// Dovakarn: the actor's combat ended (the combat event). TrueHUD's own removal, unless a fight with the player still keeps
+// the bar; decided on the menu's thread, where the keep time lives
+void HUDHandler::RemoveActorInfoBarOnCombatEnd(RE::ObjectRefHandle a_actorHandle)
+{
+	if (a_actorHandle) {
+		AddHUDTask([a_actorHandle](TrueHUDMenu& a_menu) {
+			[[maybe_unused]] const bool bLeaving = a_menu.RemoveActorInfoBarOnCombatEnd(a_actorHandle);
+			DOV_BAR_LOG("combat over for [{}]: {}", Utils::Describe(a_actorHandle), bLeaving ? "its bar leaves" : "no bar, or a fight with the player still keeps it");
 		});
 	}
 }
@@ -826,10 +925,23 @@ void HUDHandler::Initialize()
 
 void HUDHandler::Process(TrueHUDMenu& a_menu, float a_deltaTime)
 {
-	while (!_taskQueue.empty()) {
-		auto& task = _taskQueue.front();
-		task(a_menu);
-		_taskQueue.pop();
+	// Dovakarn: the waiting tasks are taken out under the lock AddHUDTask puts them in under, then run outside it, in order.
+	// TrueHUD read and popped the queue here with no lock, while a game event on another thread could be pushing to it.
+	// A task that asks for another one is still served in this same pass, as before
+	for (;;) {
+		std::queue<HUDTask> tasks;
+		{
+			Locker locker(_lock);
+			tasks.swap(_taskQueue);
+		}
+		if (tasks.empty()) {
+			break;
+		}
+		while (!tasks.empty()) {
+			auto& task = tasks.front();
+			task(a_menu);
+			tasks.pop();
+		}
 	}
 
 	for (auto it = _stackingDamage.begin(), next_it = it; it != _stackingDamage.end(); it = next_it) {

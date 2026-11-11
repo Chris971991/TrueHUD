@@ -18,6 +18,13 @@ namespace Utils
 
 	bool IsBehindPlayerCamera(const RE::NiPoint3& a_pos);
 
+#ifdef DOVAKARN_DEV
+	// Dovakarn, dev build only: a reference as the bar log names it, "ff000123 Wolf" (form id and name; "none" for an
+	// empty handle)
+	std::string Describe(RE::TESObjectREFR* a_ref);
+	std::string Describe(RE::ObjectRefHandle a_handle);
+#endif
+
 	inline bool FloatCompare(const float a, const float b)
 	{
 		double delta = fabs(a - b);

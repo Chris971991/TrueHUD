@@ -48,6 +48,14 @@ namespace Scaleform
 		}
 	}
 
+	void InfoBarBase::NoteFight()
+	{
+		_fightTimeLeft = Settings::fInfoBarFightKeepTime > 0.f ? Settings::fInfoBarFightKeepTime : 0.f;
+		// The low is taken afresh at the next UpdateInfo, so the damage of this very hit (applied after its event, and
+		// online a little later still) is the first fall measured
+		_fightLowHealth = -1.f;
+	}
+
 	void InfoBarBase::FlashActorValue(RE::ActorValue a_actorValue, bool a_bLong)
 	{
 		RE::GFxValue args[2];
@@ -131,6 +139,10 @@ namespace Scaleform
 			targetType = kOther;
 		}
 
+#ifdef DOVAKARN_DEV
+		_targetType = targetType;
+#endif
+
 		if (targetType == kTarget && _widgetState == kPendingRemoval) {
 			SetWidgetState(WidgetStateMode::kAdd);
 		}
@@ -155,7 +167,10 @@ namespace Scaleform
 				if (_barType == BarType::kBossInfoBar) {
 					return !bIsTeammate && actor->IsInCombat() && actor->IsHostileToActor(playerCharacter);
 				} else if (_barType == BarType::kActorInfoBar) {
-					if (targetType > kTarget && !actor->IsInCombat()) {
+					// Dovakarn: an actor the player hit or was hit by keeps its bar for the keep time, in combat or not
+					// (a still or unaware target, another player's copy and an NPC another game hosts are never "in
+					// combat" in this game). Whether its kind shows at all is still the setting's choice below
+					if (targetType > kTarget && !actor->IsInCombat() && !IsInFight()) {
 						return false;
 					}
 					switch (targetType) {
@@ -177,7 +192,8 @@ namespace Scaleform
 			} else if (!shouldBarBeDisplayed()) {
 				SetWidgetState(WidgetStateMode::kRemove);
 			} else if (_barType == BarType::kActorInfoBar) {
-				if (_bIsOffscreen) {
+				// Dovakarn: a bar its range or sight rule hides (ActorInfoBar) is hidden here too, as one off screen is
+				if (_bIsOffscreen || _bHiddenByRangeOrSight) {
 					SetWidgetState(WidgetStateMode::kHide);
 				} else {
 					bool r8 = false;
@@ -236,6 +252,20 @@ namespace Scaleform
 		} else {
 			health = actorValueOwner->GetActorValue(RE::ActorValue::kHealth);
 		}
+
+		// Dovakarn: damage over time (a burn, a poison) raises a hit event when it is put on and none for its ticks. While
+		// the keep time of a fight with the player runs, health falling to a new low counts as a hit landing, so the bar
+		// stays for as long as the actor keeps losing health. A new low, not any fall: health another game sets on a copy
+		// can rise and fall back by small steps without a hit
+		if (_barType == BarType::kActorInfoBar && targetState == kAlive && IsInFight()) {
+			constexpr float fallThatCounts = 0.5f;
+			if (_fightLowHealth < 0.f) {
+				_fightLowHealth = health;
+			} else if (health < _fightLowHealth - fallThatCounts) {
+				_fightLowHealth = health;
+				_fightTimeLeft = Settings::fInfoBarFightKeepTime;
+			}
+		}
 		float permanentMagicka = actorValueOwner->GetPermanentActorValue(RE::ActorValue::kMagicka);
 		float temporaryMagicka = actor->GetActorValueModifier(RE::ACTOR_VALUE_MODIFIER::kTemporary, RE::ActorValue::kMagicka);
 		float maxMagicka = permanentMagicka + temporaryMagicka;
@@ -258,6 +288,9 @@ namespace Scaleform
 		args[9].SetNumber(ceil(maxHealth));
 		args[10].SetNumber(ceil(health));
 		args[11].SetNumber(Utils::GetPct(health, maxHealth));
+#ifdef DOVAKARN_DEV
+		_healthPct = Utils::GetPct(health, maxHealth);
+#endif
 		args[12].SetNumber(ceil(maxMagicka));
 		args[13].SetNumber(ceil(magicka));
 		args[14].SetNumber(Utils::GetPct(magicka, maxMagicka));

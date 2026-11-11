@@ -7,7 +7,7 @@
 
 namespace Scaleform
 {
-	void ActorInfoBar::Update([[maybe_unused]] float a_deltaTime)
+	void ActorInfoBar::Update(float a_deltaTime)
 	{
 		RE::GFxValue result;
 		_object.Invoke("isReadyToRemove", &result);
@@ -16,20 +16,46 @@ namespace Scaleform
 			return;
 		}
 
-		if (IsOutOfRangeOrSight(a_deltaTime)) {
+		_bHiddenByRangeOrSight = IsOutOfRangeOrSight(a_deltaTime);
+		if (_bHiddenByRangeOrSight) {
 			// Hidden, not removed: it shows again once back in range and sight, while TrueHUD still wants it
 			RE::GFxValue::DisplayInfo displayInfo;
 			displayInfo.SetVisible(false);
 			_object.SetDisplayInfo(displayInfo);
-			return;
+		} else {
+			UpdatePosition();
 		}
 
-		UpdatePosition();
+		// Dovakarn: a hidden bar's state runs on too (it used to stop above). One TrueHUD no longer wants (combat over, the
+		// keep time after a hit run out, its actor dead) fades and is removed unseen, instead of waiting hidden until its
+		// actor next comes into range and sight and then flashing up only to fade out. UpdateInfo hides it the way it
+		// hides a bar off screen (_bHiddenByRangeOrSight), so the movie and this side agree and it fades in when it is back.
+		// The keep time after the last hit between this actor and the player runs down first, shown or hidden: after the
+		// range check above, so the bar is still drawn on the frame the time runs out and its fade is seen, and by at most
+		// a quarter of a second a frame, so a stall (a loading screen, the menu's first frame) does not use it up
+		if (_fightTimeLeft > 0.f) {
+			const float step = a_deltaTime < 0.25f ? a_deltaTime : 0.25f;
+			if (step > 0.f) {
+				_fightTimeLeft = step < _fightTimeLeft ? _fightTimeLeft - step : 0.f;
+			}
+		}
+
 		UpdateInfo();
 	}
 
 	bool ActorInfoBar::IsOutOfRangeOrSight(float a_deltaTime)
 	{
+		// Dovakarn: a bar that is already leaving stays as it was, shown or hidden, to the end. The movie's leaving fade
+		// starts from full strength, so a hidden one coming into view part way through it would flash; a shown one is
+		// seen out
+		if (_widgetState >= WidgetState::kDelayedRemoval) {
+			return _bHiddenByRangeOrSight;
+		}
+
+#ifdef DOVAKARN_DEV
+		_hideReason = kNotHidden;
+#endif
+
 		if (Settings::fInfoBarMaxDistance <= 0.f && !Settings::bInfoBarRequireLineOfSight) {
 			return false;
 		}
@@ -40,7 +66,12 @@ namespace Scaleform
 			return false;
 		}
 
-		if (Settings::fInfoBarMaxDistance > 0.f && playerCharacter->GetPosition().GetDistance(target->GetPosition()) > Settings::fInfoBarMaxDistance) {
+		// Dovakarn: an actor in a fight with the player (one hit the other within the keep time) shows further out
+		const float maxDistance = IsInFight() && Settings::fInfoBarFightMaxDistance > Settings::fInfoBarMaxDistance ? Settings::fInfoBarFightMaxDistance : Settings::fInfoBarMaxDistance;
+		if (Settings::fInfoBarMaxDistance > 0.f && playerCharacter->GetPosition().GetDistance(target->GetPosition()) > maxDistance) {
+#ifdef DOVAKARN_DEV
+			_hideReason = kOutOfRange;
+#endif
 			return true;
 		}
 
@@ -53,6 +84,11 @@ namespace Scaleform
 				_bLineOfSightChecked = true;
 				_timeSinceLineOfSightCheck = 0.f;
 			}
+#ifdef DOVAKARN_DEV
+			if (!_bHasLineOfSight) {
+				_hideReason = kOutOfSight;
+			}
+#endif
 			return !_bHasLineOfSight;
 		}
 
@@ -89,8 +125,15 @@ namespace Scaleform
 				bPlaced = Utils::GetNodePosition(RE::ActorPtr(target->As<RE::Actor>()), "NPC Head [Head]", targetPos);
 			}
 		}
-		if (!bPlaced) {
-			Utils::GetTargetPos(_refHandle, targetPos, Settings::uInfoBarAnchor == WidgetAnchor::kBody);
+		if (!bPlaced && !Utils::GetTargetPos(_refHandle, targetPos, Settings::uInfoBarAnchor == WidgetAnchor::kBody)) {
+			// Dovakarn: the actor has no 3D loaded (or the reference is gone), so there is no point to draw the bar at.
+			// TrueHUD went on with an unset position, which drew the bar at the world's origin. Not drawn, and counted as
+			// off screen, so UpdateInfo hides it and it fades in once there is a point again
+			_bIsOffscreen = true;
+			RE::GFxValue::DisplayInfo displayInfo;
+			displayInfo.SetVisible(false);
+			_object.SetDisplayInfo(displayInfo);
+			return;
 		}
 		targetPos.z += Settings::fInfoBarOffsetZ;
 		RE::NiPoint2 screenPos;

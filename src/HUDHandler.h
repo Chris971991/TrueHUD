@@ -55,6 +55,11 @@ public:
 	bool HasActorInfoBar(RE::ObjectRefHandle a_actorHandle);
 	void AddActorInfoBar(RE::ObjectRefHandle a_actorHandle);
 	void RemoveActorInfoBar(RE::ObjectRefHandle a_actorHandle, WidgetRemovalMode a_removalMode = WidgetRemovalMode::Immediate);
+	// Dovakarn: the player hit this actor or was hit by it: its bar shows at once and stays for fInfoBarFightKeepTime after
+	// the last such hit, whether or not the game counts the actor as in combat
+	void NoteActorFight(RE::ObjectRefHandle a_actorHandle);
+	// Dovakarn: the actor's combat ended: its bar leaves as before, unless such a fight still keeps it
+	void RemoveActorInfoBarOnCombatEnd(RE::ObjectRefHandle a_actorHandle);
 
 	bool HasBossInfoBar(RE::ObjectRefHandle a_actorHandle);
 	void AddBossInfoBar(RE::ObjectRefHandle a_actorHandle);

@@ -126,9 +126,20 @@ struct Settings
 	// Dovakarn's build: bars show within the name plates' range (1000) and in sight, unless its settings say otherwise
 	static inline float fInfoBarMaxDistance = 1000.f;
 	static inline bool bInfoBarRequireLineOfSight = true;
+	// Dovakarn's build: an actor the player hits, or that hits the player, has its bar at once and for 5 seconds after the
+	// last hit, out to 3000 units, whether or not the game counts it as in combat
+	static inline float fInfoBarFightKeepTime = 5.f;
+	static inline float fInfoBarFightMaxDistance = 3000.f;
 #else
 	static inline float fInfoBarMaxDistance = 0.f;            // hide (not remove) a bar while its actor is further from the player than this; 0 = never
 	static inline bool bInfoBarRequireLineOfSight = false;    // hide (not remove) a bar while the player has no line of sight to its actor
+	static inline float fInfoBarFightKeepTime = 0.f;          // seconds a bar stays after the player last hit its actor or was hit by it, in combat or not; 0 = off (TrueHUD's own rule: only an actor in combat)
+	static inline float fInfoBarFightMaxDistance = 0.f;       // fInfoBarMaxDistance for an actor inside that keep time, when larger than it
+#endif
+#ifdef DOVAKARN_DEV
+	// Dovakarn, dev build only: every decision about a floating bar (a hit or combat event taken or passed over, a bar added,
+	// hidden, shown, removed, and why) goes into TrueHUD.log. Off unless a settings file turns it on
+	static inline bool bInfoBarLog = false;
 #endif
 	static inline float fInfoBarOffsetZ = 30.f;
 	static inline bool bInfoBarLevelColorOutline = true;
@@ -316,3 +327,11 @@ struct Settings
 	static inline RE::TESGlobal* glob_trueHUDVersion = nullptr;
 	static inline RE::TESGlobal* glob_trueHUDSpecialResourceBars = nullptr;
 };
+
+// Dovakarn: a line in TrueHUD.log while bInfoBarLog is on. The dev build only (DOVAKARN_DEV): the build players get
+// compiles neither the line nor its arguments
+#ifdef DOVAKARN_DEV
+#	define DOV_BAR_LOG(...) do { if (Settings::bInfoBarLog) { logger::info(__VA_ARGS__); } } while (0)
+#else
+#	define DOV_BAR_LOG(...) ((void)0)
+#endif

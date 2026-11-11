@@ -132,6 +132,13 @@ namespace Scaleform
 		bool HasActorInfoBar(RE::ObjectRefHandle a_actorHandle);
 		bool AddActorInfoBar(RE::ObjectRefHandle a_actorHandle);
 		bool RemoveActorInfoBar(RE::ObjectRefHandle a_actorHandle, WidgetRemovalMode a_removalMode);
+		// Dovakarn: the player hit this actor or was hit by it: its bar is added if it has none (called back if it was
+		// fading out) and kept for fInfoBarFightKeepTime, in combat or not. False when the actor has a boss bar or no bar
+		// could be made. Runs on the menu's thread (a HUD task)
+		bool NoteActorFight(RE::ObjectRefHandle a_actorHandle);
+		// Dovakarn: the actor's combat ended: its bar starts to leave (RemoveActorInfoBar, Normal) unless a fight with the
+		// player still keeps it (NoteActorFight); then UpdateInfo lets it go once the keep time is over
+		bool RemoveActorInfoBarOnCombatEnd(RE::ObjectRefHandle a_actorHandle);
 
 		bool HasBossInfoBar(RE::ObjectRefHandle a_actorHandle);
 		bool AddBossInfoBar(RE::ObjectRefHandle a_actorHandle);
@@ -310,6 +317,12 @@ namespace Scaleform
 
 		void UpdateColors();
 		void UpdateVisibility();
+
+#ifdef DOVAKARN_DEV
+		// Dovakarn, dev build only: every bar as one line a script can read (_root.dovBars), and the bar log
+		void UpdateReadBack();
+		std::string _lastReadBack;
+#endif
 
 		bool AddBossInfoBarWidget(RE::ObjectRefHandle a_actorHandle);
 		int32_t GetNextBossBarIndex() const;

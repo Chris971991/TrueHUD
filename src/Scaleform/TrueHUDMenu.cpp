@@ -3,6 +3,9 @@
 #include "Settings.h"
 #include "Offsets.h"
 #include "HUDHandler.h"
+#ifdef DOVAKARN_DEV
+#include "ModAPI.h"
+#endif
 #include "Widgets/ActorInfoBar.h"
 #include "Widgets/FloatingText.h"
 #include "Utils.h"
@@ -132,6 +135,62 @@ namespace Scaleform
 		}
 
 		return false;
+	}
+
+	bool TrueHUDMenu::NoteActorFight(RE::ObjectRefHandle a_actorHandle)
+	{
+		using WidgetState = WidgetBase::WidgetState;
+		using WidgetStateMode = InfoBarBase::WidgetStateMode;
+
+		if (!_view || HasBossInfoBar(a_actorHandle)) {
+			return false;
+		}
+
+		Locker locker(_lock);
+
+		auto it = _actorInfoBarMap.find(a_actorHandle);
+		if (it != _actorInfoBarMap.end() && it->second->_widgetState >= WidgetState::kPendingRemoval) {
+			// The bar is on its way out. Still fading and not hidden: call it back, as UpdateInfo does for a target. Faded
+			// out already (the movie says so, and Update would remove it this frame), or hidden when it began to leave
+			// (calling that one back would leave the movie thinking it hidden while it draws it): take it out now and add
+			// a fresh one below
+			RE::GFxValue ready;
+			RE::GFxValue hidden;
+			it->second->_object.Invoke("isReadyToRemove", &ready);
+			it->second->_object.Invoke("isHidden", &hidden);
+			if (it->second->_widgetState == WidgetState::kRemoved || (ready.IsBool() && ready.GetBool()) || (hidden.IsBool() && hidden.GetBool())) {
+				RemoveActorInfoBar(a_actorHandle, WidgetRemovalMode::Immediate);
+				it = _actorInfoBarMap.end();
+			} else {
+				it->second->SetWidgetState(WidgetStateMode::kAdd);
+			}
+		}
+
+		if (it == _actorInfoBarMap.end()) {
+			if (!AddActorInfoBar(a_actorHandle)) {
+				return false;
+			}
+			it = _actorInfoBarMap.find(a_actorHandle);
+			if (it == _actorInfoBarMap.end()) {
+				return false;
+			}
+		}
+
+		it->second->NoteFight();
+		return true;
+	}
+
+	bool TrueHUDMenu::RemoveActorInfoBarOnCombatEnd(RE::ObjectRefHandle a_actorHandle)
+	{
+		{
+			Locker locker(_lock);
+			auto it = _actorInfoBarMap.find(a_actorHandle);
+			if (it != _actorInfoBarMap.end() && it->second->IsInFight()) {
+				return false;
+			}
+		}
+
+		return RemoveActorInfoBar(a_actorHandle, WidgetRemovalMode::Normal);
 	}
 
 	bool TrueHUDMenu::HasBossInfoBar(RE::ObjectRefHandle a_actorHandle)
@@ -1380,6 +1439,7 @@ namespace Scaleform
 
 			// remove widgets that need to be removed
 			if (widget->_widgetState == WidgetState::kRemoved) {
+				DOV_BAR_LOG("bar gone [{}]", Utils::Describe(entry.first));
 				RemoveActorInfoBar(entry.first, WidgetRemovalMode::Immediate);
 				continue;
 			}
@@ -1484,7 +1544,100 @@ namespace Scaleform
 		UpdateColors();
 
 		UpdateDebugDraw(a_deltaTime);
+
+#ifdef DOVAKARN_DEV
+		UpdateReadBack();
+#endif
 	}
+
+#ifdef DOVAKARN_DEV
+	// Dovakarn, dev build only: every floating and boss bar as one line a script can read without a picture (SkyrimPlatform:
+	// Ui.getString("TrueHUD", "_root.dovBars")), written only when it changes:
+	//   m<menu mode: 0 hidden, 1 partial, 2 shown>,t<target's form id>,s<soft target's form id>,c<1: another plugin sets the targets>
+	// then for each bar
+	//   |<actor's form id>:<a floating, b boss>:<widget state 0-5>:<target type 0-3>:<1 drawn, 0 not>:<why not>:<health %>:<fight>
+	// Widget state: 0 active, 1 hiding, 2 hidden, 3 leaving after a kill, 4 leaving, 5 removed. Target type: 0 target, 1 enemy,
+	// 2 teammate, 3 other. Why not, the first that holds: m the whole menu is hidden, r out of range, s out of sight, o off
+	// screen, h its state is not active, a faded out, - nothing. Fight: 1 while the keep time after a hit between the actor
+	// and the player runs (fInfoBarFightKeepTime), 0 otherwise. With bInfoBarLog a bar's line is logged whenever anything
+	// but its health changes
+	void TrueHUDMenu::UpdateReadBack()
+	{
+		using WidgetState = WidgetBase::WidgetState;
+
+		if (!_view) {
+			return;
+		}
+
+		const auto formIDOf = [](RE::ObjectRefHandle a_handle) -> RE::FormID {
+			if (!a_handle) {
+				return 0;
+			}
+			auto ref = a_handle.get();
+			return ref ? ref->GetFormID() : 0;
+		};
+
+		const bool bMenuShown = _menuVisibilityMode == MenuVisibilityMode::kVisible && !_bCartMode;
+		const bool bControlTaken = Messaging::TrueHUDInterface::GetSingleton()->IsTargetControlTaken();
+
+		std::string line = fmt::format("m{},t{:x},s{:x},c{}", static_cast<uint32_t>(_menuVisibilityMode), formIDOf(_targetHandle), formIDOf(_softTargetHandle), bControlTaken ? 1 : 0);
+
+		const auto add = [&](InfoBarBase& a_bar, char a_kind) {
+			bool bVisible = false;
+			double alpha = 0.0;
+			RE::GFxValue::DisplayInfo displayInfo;
+			if (a_bar._object.IsDisplayObject() && a_bar._object.GetDisplayInfo(&displayInfo)) {
+				bVisible = displayInfo.GetVisible();
+				alpha = displayInfo.GetAlpha();
+			}
+
+			char why = '-';
+			if (!bMenuShown) {
+				why = 'm';
+			} else if (a_bar._hideReason == InfoBarBase::kOutOfRange) {
+				why = 'r';
+			} else if (a_bar._hideReason == InfoBarBase::kOutOfSight) {
+				why = 's';
+			} else if (a_kind == 'a' && a_bar.IsOffscreen()) {
+				why = 'o';
+			} else if (a_bar._widgetState != WidgetState::kActive) {
+				why = 'h';
+			} else if (!bVisible || alpha < 1.0) {
+				why = 'a';
+			}
+			const bool bDrawn = bMenuShown && bVisible && alpha >= 1.0;
+
+			const int32_t fight = a_bar.IsInFight() ? 1 : 0;
+			std::string entry = fmt::format("{:x}:{}:{}:{}:{}:{}", formIDOf(a_bar._refHandle), a_kind, static_cast<uint32_t>(a_bar._widgetState), static_cast<uint32_t>(a_bar._targetType), bDrawn ? 1 : 0, why);
+			std::string logged = fmt::format("{} fight {}", entry, fight);
+			if (Settings::bInfoBarLog && logged != a_bar._lastLogged) {
+				logger::info("bar {} [{}]", logged, Utils::Describe(a_bar._refHandle));
+				a_bar._lastLogged = logged;
+			}
+
+			line += '|';
+			line += entry;
+			line += fmt::format(":{}:{}", a_bar._healthPct < 0.f ? -1 : static_cast<int32_t>(a_bar._healthPct * 100.f + 0.5f), fight);
+		};
+
+		{
+			Locker locker(_lock);
+			for (auto& entry : _actorInfoBarMap) {
+				add(*entry.second, 'a');
+			}
+			for (auto& entry : _bossInfoBarMap) {
+				add(*entry.second, 'b');
+			}
+		}
+
+		if (line != _lastReadBack) {
+			RE::GFxValue value;
+			value.SetString(line.c_str());
+			_view->SetVariable("_root.dovBars", value);
+			_lastReadBack = line;
+		}
+	}
+#endif
 
 	void TrueHUDMenu::CacheData()
 	{

@@ -266,6 +266,11 @@ void Settings::ReadSettings()
 		ReadUInt32Setting(mcm, "ActorInfoBars", "uInfoBarAnchor", (uint32_t&)uInfoBarAnchor);
 		ReadFloatSetting(mcm, "ActorInfoBars", "fInfoBarMaxDistance", fInfoBarMaxDistance);
 		ReadBoolSetting(mcm, "ActorInfoBars", "bInfoBarRequireLineOfSight", bInfoBarRequireLineOfSight);
+		ReadFloatSetting(mcm, "ActorInfoBars", "fInfoBarFightKeepTime", fInfoBarFightKeepTime);
+		ReadFloatSetting(mcm, "ActorInfoBars", "fInfoBarFightMaxDistance", fInfoBarFightMaxDistance);
+#ifdef DOVAKARN_DEV
+		ReadBoolSetting(mcm, "ActorInfoBars", "bInfoBarLog", bInfoBarLog);
+#endif
 		ReadFloatSetting(mcm, "ActorInfoBars", "fInfoBarOffsetZ", fInfoBarOffsetZ);
 		ReadBoolSetting(mcm, "ActorInfoBars", "bInfoBarLevelColorOutline", bInfoBarLevelColorOutline);
 		ReadUInt32Setting(mcm, "ActorInfoBars", "uInfoBarLevelThreshold", (uint32_t&)uInfoBarLevelThreshold);
