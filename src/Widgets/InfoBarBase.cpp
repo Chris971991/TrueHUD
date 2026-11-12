@@ -256,9 +256,12 @@ namespace Scaleform
 		// Dovakarn: damage over time (a burn, a poison) raises a hit event when it is put on and none for its ticks. While
 		// the keep time of a fight with the player runs, health falling to a new low counts as a hit landing, so the bar
 		// stays for as long as the actor keeps losing health. A new low, not any fall: health another game sets on a copy
-		// can rise and fall back by small steps without a hit
+		// can rise and fall back by small steps without a hit. Any new low counts (a hundredth of a point, against float
+		// noise only): with half a point, a weak dose's tail never counted (12/11/2026, reading 9: a Potent Poison's 1.5
+		// points over 5 s on a 22-health wolf restarted the keep time only at its first 0.5 and 1.0, so the bar's fight
+		// ended 3.46 s after the dose's last fall instead of the keep time's 5)
 		if (_barType == BarType::kActorInfoBar && targetState == kAlive && IsInFight()) {
-			constexpr float fallThatCounts = 0.5f;
+			constexpr float fallThatCounts = 0.01f;
 			if (_fightLowHealth < 0.f) {
 				_fightLowHealth = health;
 			} else if (health < _fightLowHealth - fallThatCounts) {

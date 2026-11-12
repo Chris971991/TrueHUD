@@ -125,3 +125,27 @@ For finding out why a floating bar is missing without a picture.
 
 The first diagnostic build (local branch `dovakarn/1.1.9-bar-readback`, `e1a93cd`, sha256 `ff849f82...`, no fix in it) was
 loaded and read in the workshop game on 11/11/2026: that is where the proof above comes from.
+
+## The server's fight feed and any new low (branch `dovakarn/1.1.9-fight-feed`, 12/11/2026)
+
+From `dovakarn/1.1.9-health-bars`, built the same two ways (`build-mt` served, `build-mt-dev` with `-DTRUEHUD_DOVAKARN_DEV=ON`):
+
+- **`DovakarnBars.Fight(Actor akActor)`**, a global Papyrus native (`scripts/source/DovakarnBars.psc`, compiled to
+  `Scripts/DovakarnBars.pex`, which must ship with the DLL; `src/Papyrus.cpp`): the game server's word that akActor is in a
+  fight with the player that this game raised no hit event for. Dovakarn's client calls it for another player's hit on the
+  player (a copy's spell or swing never hits in this game), the player's heal on someone (the game's own gate refuses the
+  caster's effect on another actor; the server lands it), and another player's hit on an NPC near the player. It adds or
+  keeps the bar for `fInfoBarFightKeepTime` as a hit between the player and akActor does (`HUDHandler::NoteActorFight`),
+  for the kinds the settings show at all (hostiles, teammates, others).
+- **Damage over time counts every new low** (`InfoBarBase::UpdateInfo`): the keep time restarted only on a fall of half a
+  point below the last low, so a weak dose's tail never counted (a Potent Poison's 1.5 points over 5 s on a 22-health wolf:
+  the fight ended 3.46 s after the dose's last fall). Now a hundredth of a point (float noise only) is enough; a rise and a
+  fall back to the old low still counts nothing.
+- `DovakarnBars.pex` was compiled with the Creation Kit's PapyrusCompiler.exe against stubs of Form, ObjectReference and
+  Actor (the workshop has no Package.psc; the script names only the Actor type): sha256
+  `85df1298f5b8f085e93ab581861ede38f87b349a2195c24c93837dbf9b6fca5f`.
+
+Dovakarn's builds: served sha256 `ede63e383f341c862b907202ffa60d2b21476957d7e0e9278bfe80b38895f357`, dev
+`08e27355641f0cf44cb078d30ef786aa7ccef1be75b8fea96bb4852cc39161b3` (CommonLibSSE-NG `cab9f743f`,
+`-DTRUEHUD_DOVAKARN_DEFAULTS=ON`; environment `CompiledPluginsPath`, `CommonLibSSEPath_NG`, `VCPKG_ROOT`, Visual Studio
+Community 2026's CMake).

@@ -2,6 +2,7 @@
 
 #include "Settings.h"
 #include "HUDHandler.h"
+#include "Utils.h"
 
 namespace Papyrus
 {
@@ -31,11 +32,40 @@ namespace Papyrus
 		return true;
 	}
 
+	void DovakarnBars::Fight(RE::StaticFunctionTag*, RE::Actor* a_actor)
+	{
+		auto playerCharacter = RE::PlayerCharacter::GetSingleton();
+		if (!a_actor || !playerCharacter || a_actor->IsPlayerRef() || Settings::fInfoBarFightKeepTime <= 0.f) {
+			return;
+		}
+		// The kinds of bar the settings show at all, as the hit handler asks them
+		bool bShowsBars = false;
+		if (a_actor->IsHostileToActor(playerCharacter)) {
+			bShowsBars = Settings::uInfoBarDisplayHostiles > InfoBarsDisplayMode::kNever;
+		} else if (Utils::IsPlayerTeammateOrSummon(a_actor)) {
+			bShowsBars = Settings::uInfoBarDisplayTeammates > InfoBarsDisplayMode::kNever;
+		} else {
+			bShowsBars = Settings::uInfoBarDisplayOthers > InfoBarsDisplayMode::kNever;
+		}
+		if (bShowsBars) {
+			HUDHandler::GetSingleton()->NoteActorFight(a_actor->GetHandle());
+		}
+	}
+
+	bool DovakarnBars::Register(RE::BSScript::IVirtualMachine* a_vm)
+	{
+		a_vm->RegisterFunction("Fight", "DovakarnBars", Fight);
+
+		logger::info("Registered DovakarnBars class");
+		return true;
+	}
+
 	void Register()
 	{
 		auto papyrus = SKSE::GetPapyrusInterface();
 		papyrus->Register(TrueHUD_MCM::Register);
 		papyrus->Register(DovakarnLoot::Register);
+		papyrus->Register(DovakarnBars::Register);
 		logger::info("Registered papyrus functions");
 	}
 }
