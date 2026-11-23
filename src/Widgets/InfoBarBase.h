@@ -61,6 +61,9 @@ namespace Scaleform
 		void NoteFight();
 		bool IsInFight() const { return _fightTimeLeft > 0.f; }
 
+		// Dovakarn: hidden for range or sight, off screen, or with no point to draw at (TrueHUDMenu::UpdateDrawnLines)
+		bool IsHiddenHere() const { return _bIsOffscreen || _bHiddenByRangeOrSight; }
+
 #ifdef DOVAKARN_DEV
 		// Dovakarn, dev build only, for the read-back (_root.dovBars) and the bar log: why the bar is hidden by range or
 		// sight (ActorInfoBar), what TrueHUD last took the actor for, its health as last handed to the movie, and the line

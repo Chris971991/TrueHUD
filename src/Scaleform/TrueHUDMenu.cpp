@@ -1545,9 +1545,61 @@ namespace Scaleform
 
 		UpdateDebugDraw(a_deltaTime);
 
+		UpdateDrawnLines();
+
 #ifdef DOVAKARN_DEV
 		UpdateReadBack();
 #endif
+	}
+
+	// Dovakarn (served build too): the floating bars TrueHUD draws right now, for a multiplayer client's name plates
+	// (SkyrimPlatform: Ui.getString("TrueHUD", "_root.dovLines")), written only when it changes:
+	//   v1 then, for each floating bar on screen, |<actor's form id, hex>:<lower lines it shows: 0, 1, or 2 for magicka and stamina>
+	// On screen: TrueHUD's menu shown, the bar active (not hiding, hidden or leaving), not hidden for range or sight, not off
+	// screen, visible in the movie and not faded out (alpha 1 or more of 100), as the dev read-back counts "drawn". The lines
+	// are the widget's own uDisplayedResources (TrueHUD_InfoBarBase.as moveResources), which the bar's lift follows. An actor
+	// with no entry has no floating bar on screen, so the client's plate keeps its place over it (another player out of a
+	// fight shows none: uInfoBarDisplayOthers is "on a hit"). Boss bars are not listed: they sit at the screen's edge
+	void TrueHUDMenu::UpdateDrawnLines()
+	{
+		using WidgetState = WidgetBase::WidgetState;
+
+		if (!_view) {
+			return;
+		}
+
+		std::string line = "v1";
+		if (_menuVisibilityMode == MenuVisibilityMode::kVisible && !_bCartMode) {
+			Locker locker(_lock);
+			for (auto& entry : _actorInfoBarMap) {
+				auto& bar = *entry.second;
+				if (bar._widgetState != WidgetState::kActive || bar.IsHiddenHere() || !bar._object.IsDisplayObject()) {
+					continue;
+				}
+				RE::GFxValue::DisplayInfo displayInfo;
+				if (!bar._object.GetDisplayInfo(&displayInfo) || !displayInfo.GetVisible() || displayInfo.GetAlpha() < 1.0) {
+					continue;
+				}
+				auto ref = bar._refHandle.get();
+				if (!ref) {
+					continue;
+				}
+				int32_t lines = 0;
+				RE::GFxValue shown;
+				if (bar._object.GetMember("uDisplayedResources", &shown) && shown.IsNumber()) {
+					const double n = shown.GetNumber();
+					lines = n >= 2.0 ? 2 : (n >= 1.0 ? 1 : 0);
+				}
+				line += fmt::format("|{:x}:{}", ref->GetFormID(), lines);
+			}
+		}
+
+		if (line != _lastDrawnLines) {
+			RE::GFxValue value;
+			value.SetString(line.c_str());
+			_view->SetVariable("_root.dovLines", value);
+			_lastDrawnLines = line;
+		}
 	}
 
 #ifdef DOVAKARN_DEV

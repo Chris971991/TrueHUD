@@ -324,6 +324,11 @@ namespace Scaleform
 		std::string _lastReadBack;
 #endif
 
+		// Dovakarn (served build too): the floating bars on screen right now and how many lower lines each shows, as one line
+		// a multiplayer client reads (_root.dovLines), so its name plate lifts only over a bar that is really there
+		void UpdateDrawnLines();
+		std::string _lastDrawnLines;
+
 		bool AddBossInfoBarWidget(RE::ObjectRefHandle a_actorHandle);
 		int32_t GetNextBossBarIndex() const;
 		void RefreshBossBarIndexes(int32_t a_removedIndex);

@@ -174,3 +174,24 @@ the actor's own values, not a list (so modded creatures are right too):
 Dovakarn's builds: served sha256 `ed79db719dc0d37aabe5a449bf2eb166f83684b7e6bc2aa3b9e67b69f1274553`, dev
 `87c153cc510499decc4f94092f198f6dd10951279cdb46ee288c79797ba87918` (CommonLibSSE-NG `cab9f743f`,
 `-DTRUEHUD_DOVAKARN_DEFAULTS=ON`).
+
+## Name plates lift only over a bar that is there (same branch, 24/11/2026)
+
+Seen in game 24/11/2026 (Dovakarn's item 44 check): another player out of a fight had no floating bar (TrueHUD shows an
+"other" only on a hit, `uInfoBarDisplayOthers`, and keeps it `fInfoBarFightKeepTime`), yet Dovakarn's name plate lifted
+over them, because the client guessed TrueHUD's bars from its own rule (the crosshair taken as the target, and the
+character's stamina and magicka). The client cannot see TrueHUD's state, so the build now says it, in both builds:
+
+- **`_root.dovLines`** in TrueHUD's menu movie (SkyrimPlatform: `Ui.getString("TrueHUD", "_root.dovLines")`), written by
+  `TrueHUDMenu::UpdateDrawnLines` each frame after the bars update, only when it changes: `v1`, then for each floating bar
+  on screen `|<actor's form id, hex>:<lower lines it shows: 0, 1, or 2>`. On screen: TrueHUD's menu shown, the bar active,
+  not hidden for range or sight (`InfoBarBase::IsHiddenHere`), not off screen, visible in the movie and not faded out
+  (alpha 1 or more), as the dev read-back counts "drawn". The lines are the widget's own `uDisplayedResources`, which the
+  bar's lift follows. No entry: no floating bar on screen for that actor. Boss bars are not listed.
+- Written on the thread that runs the menu (`TrueHUDMenu::AdvanceMovie`), under `_lock` like the dev read-back; read by the
+  client through SKSE's `UI.GetString`, as the dev tool reads `_root.dovBars`. No new Papyrus function, so
+  `DovakarnBars.pex` (2e0859ff...) and the widget (19acceaf...) are unchanged.
+
+Dovakarn's builds: served sha256 `11292dafcf21ef1e0b906dda120478492c8fc4e1a971ef4a4858cc3fb23a447b` (1,184,256 bytes), dev
+`8badd9998541818960c594e2da2b6b69c52aafc3d2ba04c15a6dd7d007326e1` (1,197,568 bytes) (CommonLibSSE-NG `cab9f743f`,
+`-DTRUEHUD_DOVAKARN_DEFAULTS=ON`). The served one holds `_root.dovLines` and none of the dev strings.
