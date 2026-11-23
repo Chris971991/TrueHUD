@@ -184,8 +184,8 @@ character's stamina and magicka). The client cannot see TrueHUD's state, so the 
 
 - **`_root.dovLines`** in TrueHUD's menu movie (SkyrimPlatform: `Ui.getString("TrueHUD", "_root.dovLines")`), written by
   `TrueHUDMenu::UpdateDrawnLines` each frame after the bars update, only when it changes: `v1`, then for each floating bar
-  on screen `|<actor's form id, hex>:<lower lines it shows: 0, 1, or 2>`. On screen: TrueHUD's menu shown, the bar active,
-  not hidden for range or sight (`InfoBarBase::IsHiddenHere`), not off screen, visible in the movie and not faded out
+  on screen `|<actor's form id, hex>:<lower lines it shows: 0, 1, or 2>`. On screen: TrueHUD's menu shown, the bar not
+  hidden or removed (until the follow-up below: active only), not hidden for range or sight (`InfoBarBase::IsHiddenHere`), not off screen, visible in the movie and not faded out
   (alpha 1 or more), as the dev read-back counts "drawn". The lines are the widget's own `uDisplayedResources`, which the
   bar's lift follows. No entry: no floating bar on screen for that actor. Boss bars are not listed.
 - Written on the thread that runs the menu (`TrueHUDMenu::AdvanceMovie`), under `_lock` like the dev read-back; read by the
@@ -193,5 +193,20 @@ character's stamina and magicka). The client cannot see TrueHUD's state, so the 
   `DovakarnBars.pex` (2e0859ff...) and the widget (19acceaf...) are unchanged.
 
 Dovakarn's builds: served sha256 `11292dafcf21ef1e0b906dda120478492c8fc4e1a971ef4a4858cc3fb23a447b` (1,184,256 bytes), dev
-`8badd9998541818960c594e2da2b6b69c52aafc3d2ba04c15a6dd7d007326e1` (1,197,568 bytes) (CommonLibSSE-NG `cab9f743f`,
+`8baddd9998541818960c594e2da2b6b69c52aafc3d2ba04c15a6dd7d007326e1` (1,197,568 bytes; the commit message of `225e287` and
+the first copy of this line dropped a `d` and gave a 63-character hash) (CommonLibSSE-NG `cab9f743f`,
 `-DTRUEHUD_DOVAKARN_DEFAULTS=ON`). The served one holds `_root.dovLines` and none of the dev strings.
+
+### Follow-up: a bar on its way out still counts while its fade is seen (same branch, 24/11/2026)
+
+The first `UpdateDrawnLines` listed only bars in the active state. A bar leaves that state the moment it starts going
+(hiding, its keep time run out, its actor killed), but the movie then fades it over 0.25 s at full lift
+(`TrueHUD_InfoBarBase.as` `toggleVisibility` / `toggleWidget`), so the client's plate dropped back onto a health bar that
+was still lifted. Now every bar except a hidden or removed one is listed while it is visible and its alpha is 1 or more;
+the fade's own alpha ends the entry. A killed actor's bar already shows 0 lower lines (`targetKilled` moves them in), so
+its plate settles with it. A bar hidden at once for range, sight or off screen is still left out (it is not drawn).
+
+Dovakarn's builds: served sha256 `0228de58396b25b6aea2a8f0b2b04cde70e027e35e6df55c413cb0bde5bc8ebb` (1,184,256 bytes), dev
+`3d73aa743dadc61433dde61856162a02f984c9aa8665e73d43405bde2f4d663f` (1,197,568 bytes) (CommonLibSSE-NG `cab9f743f`,
+`-DTRUEHUD_DOVAKARN_DEFAULTS=ON`). The served one holds `_root.dovLines` and none of the dev strings. `DovakarnBars.pex`
+and the widget are unchanged.

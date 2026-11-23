@@ -1555,11 +1555,14 @@ namespace Scaleform
 	// Dovakarn (served build too): the floating bars TrueHUD draws right now, for a multiplayer client's name plates
 	// (SkyrimPlatform: Ui.getString("TrueHUD", "_root.dovLines")), written only when it changes:
 	//   v1 then, for each floating bar on screen, |<actor's form id, hex>:<lower lines it shows: 0, 1, or 2 for magicka and stamina>
-	// On screen: TrueHUD's menu shown, the bar active (not hiding, hidden or leaving), not hidden for range or sight, not off
-	// screen, visible in the movie and not faded out (alpha 1 or more of 100), as the dev read-back counts "drawn". The lines
-	// are the widget's own uDisplayedResources (TrueHUD_InfoBarBase.as moveResources), which the bar's lift follows. An actor
-	// with no entry has no floating bar on screen, so the client's plate keeps its place over it (another player out of a
-	// fight shows none: uInfoBarDisplayOthers is "on a hit"). Boss bars are not listed: they sit at the screen's edge
+	// On screen: TrueHUD's menu shown, the bar not hidden or removed, not hidden for range or sight, not off screen, visible
+	// in the movie and not faded out (alpha 1 or more of 100), as the dev read-back counts "drawn". A bar on its way out
+	// (hiding, leaving after its keep time, or its actor killed) is still listed while its fade is seen: the movie fades it
+	// over 0.25 s at full lift (TrueHUD_InfoBarBase.as toggleVisibility / toggleWidget), and the plate must not drop onto
+	// it before it is gone (24/11/2026 review; a killed actor's bar already shows 0 lines, targetKilled). The lines are the
+	// widget's own uDisplayedResources (moveResources), which the bar's lift follows. An actor with no entry has no
+	// floating bar on screen, so the client's plate keeps its place over it (another player out of a fight shows none:
+	// uInfoBarDisplayOthers is "on a hit"). Boss bars are not listed: they sit at the screen's edge
 	void TrueHUDMenu::UpdateDrawnLines()
 	{
 		using WidgetState = WidgetBase::WidgetState;
@@ -1573,7 +1576,7 @@ namespace Scaleform
 			Locker locker(_lock);
 			for (auto& entry : _actorInfoBarMap) {
 				auto& bar = *entry.second;
-				if (bar._widgetState != WidgetState::kActive || bar.IsHiddenHere() || !bar._object.IsDisplayObject()) {
+				if (bar._widgetState == WidgetState::kHidden || bar._widgetState == WidgetState::kRemoved || bar.IsHiddenHere() || !bar._object.IsDisplayObject()) {
 					continue;
 				}
 				RE::GFxValue::DisplayInfo displayInfo;
