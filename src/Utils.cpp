@@ -84,6 +84,92 @@ bool Utils::IsPlayerTeammateOrSummon(RE::Actor* a_actor)
 	return false;
 }
 
+namespace
+{
+	// A spell the actor casts with magicka: a castable spell (not an ability, power, disease or shout) whose cost for this
+	// caster is above 0
+	bool SpendsMagicka(RE::SpellItem* a_spell, RE::Actor* a_actor)
+	{
+		return a_spell && a_spell->GetSpellType() == RE::MagicSystem::SpellType::kSpell && a_spell->CalculateMagickaCost(a_actor) > 0.f;
+	}
+
+	bool ListSpendsMagicka(const RE::TESSpellList::SpellData* a_list, RE::Actor* a_actor)
+	{
+		if (!a_list) {
+			return false;
+		}
+		if (a_list->levSpells) {
+			for (std::uint32_t i = 0; i < a_list->numlevSpells; ++i) {
+				if (a_list->levSpells[i]) {
+					return true;
+				}
+			}
+		}
+		if (a_list->spells) {
+			for (std::uint32_t i = 0; i < a_list->numSpells; ++i) {
+				if (SpendsMagicka(a_list->spells[i], a_actor)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+}
+
+bool Utils::CanSpendMagicka(RE::Actor* a_actor)
+{
+	if (!a_actor) {
+		return false;
+	}
+	if (a_actor->IsPlayerRef()) {
+		return true;
+	}
+	auto race = a_actor->GetRace();
+	if (race && race->data.flags.any(RE::RACE_DATA::Flag::kPlayable, RE::RACE_DATA::Flag::kFaceGenHead)) {
+		return true;
+	}
+	if (race && ListSpendsMagicka(race->actorEffects, a_actor)) {
+		return true;
+	}
+	for (auto spell : a_actor->GetActorRuntimeData().addedSpells) {
+		if (SpendsMagicka(spell, a_actor)) {
+			return true;
+		}
+	}
+	// The base's own list, then its template's while it takes its spells from one (a leveled or templated NPC)
+	RE::TESNPC* npc = a_actor->GetActorBase();
+	for (int depth = 0; npc && depth < 8; ++depth) {
+		if (ListSpendsMagicka(npc->actorEffects, a_actor)) {
+			return true;
+		}
+		if (!npc->UsesTemplate() || npc->actorData.templateUseFlags.none(RE::ACTOR_BASE_DATA::TEMPLATE_USE_FLAG::kSpells)) {
+			break;
+		}
+		npc = npc->baseTemplateForm ? npc->baseTemplateForm->As<RE::TESNPC>() : nullptr;
+	}
+	return false;
+}
+
+std::uint32_t Utils::GetResourcePools(RE::Actor* a_actor)
+{
+	if (!a_actor) {
+		return kPoolsAll;
+	}
+	auto actorValueOwner = a_actor->AsActorValueOwner();
+	float maxMagicka = actorValueOwner->GetPermanentActorValue(RE::ActorValue::kMagicka) +
+	                   a_actor->GetActorValueModifier(RE::ACTOR_VALUE_MODIFIER::kTemporary, RE::ActorValue::kMagicka);
+	float maxStamina = actorValueOwner->GetPermanentActorValue(RE::ActorValue::kStamina) +
+	                   a_actor->GetActorValueModifier(RE::ACTOR_VALUE_MODIFIER::kTemporary, RE::ActorValue::kStamina);
+	std::uint32_t pools = 0;
+	if (maxStamina > 0.f) {
+		pools |= kPoolStamina;
+	}
+	if (maxMagicka > 0.f && CanSpendMagicka(a_actor)) {
+		pools |= kPoolMagicka;
+	}
+	return pools;
+}
+
 #ifdef DOVAKARN_DEV
 std::string Utils::Describe(RE::TESObjectREFR* a_ref)
 {

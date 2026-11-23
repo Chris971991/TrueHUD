@@ -277,8 +277,27 @@ namespace Scaleform
 		float temporaryStamina = actor->GetActorValueModifier(RE::ACTOR_VALUE_MODIFIER::kTemporary, RE::ActorValue::kStamina);
 		float maxStamina = permanentStamina + temporaryStamina;
 		float stamina = actorValueOwner->GetActorValue(RE::ActorValue::kStamina);
-		
-		RE::GFxValue args[18];
+
+		// Dovakarn: only the lower bars the actor really has (Utils::GetResourcePools: a maximum above 0, and for magicka a
+		// person or a spell that costs it), handed to the widget as updateData's 19th value. The spell part is asked at most
+		// once a second, and only while there is magicka to show
+		std::uint32_t pools = 0;
+		if (maxStamina > 0.f) {
+			pools |= Utils::kPoolStamina;
+		}
+		if (maxMagicka > 0.f) {
+			auto now = std::chrono::steady_clock::now();
+			if (!_bSpendAsked || now - _spendAskedAt >= std::chrono::seconds(1)) {
+				_bCanSpendMagicka = Utils::CanSpendMagicka(actor);
+				_bSpendAsked = true;
+				_spendAskedAt = now;
+			}
+			if (_bCanSpendMagicka) {
+				pools |= Utils::kPoolMagicka;
+			}
+		}
+
+		RE::GFxValue args[19];
 		args[0].SetNumber(targetType);
 		args[1].SetNumber(_widgetState);
 		args[2].SetNumber(_depth);
@@ -300,8 +319,9 @@ namespace Scaleform
 		args[15].SetNumber(ceil(maxStamina));
 		args[16].SetNumber(ceil(stamina));
 		args[17].SetNumber(Utils::GetPct(stamina, maxStamina));
+		args[18].SetNumber(pools);
 
-		_object.Invoke("updateData", nullptr, args, 18);
+		_object.Invoke("updateData", nullptr, args, 19);
 
 		if (hudHandler && hudHandler->bSpecialFunctionsProvided) {
 			RE::GFxValue specialArgs[3];

@@ -18,6 +18,23 @@ namespace Utils
 
 	bool IsBehindPlayerCamera(const RE::NiPoint3& a_pos);
 
+	// Dovakarn: the lower bars (magicka, stamina) an actor really has, as bits. Decided from the actor's own values and
+	// records, never from a list of creatures, so a modded creature is right too:
+	// - stamina: its maximum (permanent plus temporary) is above 0;
+	// - magicka: its maximum is above 0, and it is a person (the player, or a playable or face-generated race: players and
+	//   humanoid NPCs) or it knows a spell that costs magicka (its own spell list, through its template chain, its race's and
+	//   any spell added to it). A creature's leftover race magicka it can never spend (a mudcrab's 4, a frostbite spider's
+	//   4) is no pool. A leveled spell list counts as knowing a spell.
+	enum ResourcePool : std::uint32_t
+	{
+		kPoolMagicka = 1 << 0,
+		kPoolStamina = 1 << 1,
+		kPoolsAll = kPoolMagicka | kPoolStamina
+	};
+	std::uint32_t GetResourcePools(RE::Actor* a_actor);
+	// The magicka half of GetResourcePools without the maximum: a person, or an actor that knows a spell costing magicka
+	bool CanSpendMagicka(RE::Actor* a_actor);
+
 #ifdef DOVAKARN_DEV
 	// Dovakarn, dev build only: a reference as the bar log names it, "ff000123 Wolf" (form id and name; "none" for an
 	// empty handle)

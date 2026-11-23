@@ -123,6 +123,13 @@ class Widgets.TrueHUD_InfoBarBase extends MovieClip
 	var resourcesYNone = 0;
 	var resourcesYStamina = 0;
 	var resourcesYBoth = 0;
+
+	// Dovakarn (item 44): the lower bars the actor really has, from the DLL (updateData's a_pools: 1 magicka + 2 stamina;
+	// absent from an older DLL, then both). A pool the actor does not have never shows; one alone shows in the lower line
+	// (bLowerIsMagicka: magicka's value and colours in the stamina bar), so the lift is one line's either way
+	var uPools: Number = 3;
+	var bLowerIsMagicka: Boolean = false;
+	var bResourcesKilled: Boolean = false;
 	var specialYHidden = 0;
 	var specialYShown = 0;
 
@@ -310,6 +317,8 @@ class Widgets.TrueHUD_InfoBarBase extends MovieClip
 
 	public function targetKilled()
 	{
+		bResourcesKilled = true;
+
 		if (uDisplayedResources > 0)
 		{
 			moveResources(0);
@@ -471,45 +480,67 @@ class Widgets.TrueHUD_InfoBarBase extends MovieClip
 
 		uResourcesMode = a_mode;
 
-		switch (a_mode)
-		{
-		case 0: // never
-			if (uDisplayedResources != 0)
-			{
-				moveResources(0);
-			}
-			break;
-		
-		case 1: // when changed from max
-			if (bMagickaChangedFromDefault)
-			{
-				if (uDisplayedResources < 2)
-				{
-					moveResources(2);
-				}
-			}
-			else if (bStaminaChangedFromDefault)
-			{
-				if (uDisplayedResources < 1)
-				{
-					moveResources(1);
-				}
-			}
-			else
-			{
-				if (uDisplayedResources > 0)
-				{
-					moveResources(0);
-				}
-			}
-			break;
+		applyResources();
+	}
 
-		case 2: // always
-			if (uDisplayedResources < 2)
+	// Dovakarn (item 44): which lower bars show, from the mode (0 never, 1 when changed from max, 2 always) and the pools the
+	// actor has. Mode 1 keeps TrueHUD's rule (magicka changed shows both, stamina changed the stamina bar) for the bars it has.
+	// Nothing after the target is killed
+	public function applyResources()
+	{
+		var bHasMagicka: Boolean = (uPools & 1) != 0;
+		var bHasStamina: Boolean = (uPools & 2) != 0;
+		var bMagicka: Boolean = false;
+		var bStamina: Boolean = false;
+
+		if (!bResourcesKilled)
+		{
+			if (uResourcesMode == 1) // when changed from max
 			{
-				moveResources(2);
+				bMagicka = bHasMagicka && bMagickaChangedFromDefault;
+				bStamina = bHasStamina && (bStaminaChangedFromDefault || bMagicka);
 			}
-			break;
+			else if (uResourcesMode == 2) // always
+			{
+				bMagicka = bHasMagicka;
+				bStamina = bHasStamina;
+			}
+		}
+
+		var uShown: Number = 0;
+		if (bMagicka && bStamina)
+		{
+			uShown = 2;
+		}
+		else if (bMagicka || bStamina)
+		{
+			uShown = 1;
+		}
+
+		var bLower: Boolean = bMagicka && !bStamina;
+		if (bLower != bLowerIsMagicka)
+		{
+			bLowerIsMagicka = bLower;
+			setLowerColor();
+			Bars.Resources.StaminaBar.updatePercent(bLowerIsMagicka ? magickaPct : staminaPct, true);
+		}
+
+		if (uShown != uDisplayedResources)
+		{
+			moveResources(uShown);
+		}
+	}
+
+	// Dovakarn (item 44): the lower line in magicka's colours while it shows magicka alone, stamina's otherwise
+	public function setLowerColor()
+	{
+		if (bLowerIsMagicka)
+		{
+			Bars.Resources.StaminaBar.setColor(uMagickaColor, uMagickaPhantomColor, uMagickaBackgroundColor, uMagickaPenaltyColor, uMagickaFlashColor);
+		}
+		else
+		{
+			Bars.Resources.StaminaBar.setColor(uStaminaColor, uStaminaPhantomColor, uStaminaBackgroundColor, uStaminaPenaltyColor, uStaminaFlashColor);
 		}
 	}
 
@@ -576,11 +607,21 @@ class Widgets.TrueHUD_InfoBarBase extends MovieClip
 			case 24: // health
 				Bars.HealthBar.playFlash(a_bLong);
 				break;
-			case 25: // magicka
-				Bars.Resources.MagickaBar.playFlash(a_bLong);
+			case 25: // magicka (in the lower line while it shows alone)
+				if (bLowerIsMagicka)
+				{
+					Bars.Resources.StaminaBar.playFlash(a_bLong);
+				}
+				else
+				{
+					Bars.Resources.MagickaBar.playFlash(a_bLong);
+				}
 				break;
 			case 26: // stamina
-				Bars.Resources.StaminaBar.playFlash(a_bLong);
+				if (!bLowerIsMagicka)
+				{
+					Bars.Resources.StaminaBar.playFlash(a_bLong);
+				}
 				break;
 		}
 	}
@@ -611,7 +652,8 @@ class Widgets.TrueHUD_InfoBarBase extends MovieClip
 		a_magickaPct: Number,
 		a_maxStamina: Number,
 		a_stamina: Number,
-		a_staminaPct: Number)
+		a_staminaPct: Number,
+		a_pools: Number)
 	{
 		depth = a_depth;
 
@@ -619,7 +661,16 @@ class Widgets.TrueHUD_InfoBarBase extends MovieClip
 		{
 			return;
 		}
-		
+
+		// Dovakarn (item 44): the pools first, so a target type change below shows only the bars the actor has
+		var bApplyResources: Boolean = false;
+		var uNewPools: Number = a_pools == undefined ? 3 : a_pools;
+		if (uNewPools != uPools)
+		{
+			uPools = uNewPools;
+			bApplyResources = true;
+		}
+
 		if (a_widgetState != widgetState)
 		{
 			if (widgetState < 3)
@@ -750,18 +801,18 @@ class Widgets.TrueHUD_InfoBarBase extends MovieClip
 			}
 
 			Bars.Resources.MagickaBar.updatePercent(a_magickaPct, bInstant);
-			
+			if (bLowerIsMagicka)
+			{
+				Bars.Resources.StaminaBar.updatePercent(a_magickaPct, bInstant);
+			}
+
 			magicka = a_magicka;
 			maxMagicka = a_maxMagicka;
 			magickaPct = a_magickaPct;
 
 			if (!bMagickaChangedFromDefault && magicka < maxMagicka) {
 				bMagickaChangedFromDefault = true;
-
-				if (uResourcesMode == 1 && uDisplayedResources < 2)
-				{
-					moveResources(2);
-				}
+				bApplyResources = true;
 			}
 		}
 
@@ -773,20 +824,24 @@ class Widgets.TrueHUD_InfoBarBase extends MovieClip
 				bInstant = true;
 			}
 
-			Bars.Resources.StaminaBar.updatePercent(a_staminaPct, bInstant);
-			
+			if (!bLowerIsMagicka)
+			{
+				Bars.Resources.StaminaBar.updatePercent(a_staminaPct, bInstant);
+			}
+
 			stamina = a_stamina;
 			maxStamina = a_maxStamina;
 			staminaPct = a_staminaPct;
 
 			if (!bStaminaChangedFromDefault && stamina < maxStamina) {
 				bStaminaChangedFromDefault = true;
-
-				if (uResourcesMode == 1 && uDisplayedResources < 1)
-				{
-					moveResources(1);
-				}
+				bApplyResources = true;
 			}
+		}
+
+		if (bApplyResources)
+		{
+			applyResources();
 		}
 
 		if (a_targetState > 2) // Essential and bleeding out, or Dead
@@ -943,10 +998,10 @@ class Widgets.TrueHUD_InfoBarBase extends MovieClip
 
 		Bars.HealthBar.setColor(uHealthColor, uHealthPhantomColor, uHealthBackgroundColor, uHealthPenaltyColor, uHealthFlashColor);
 		Bars.Resources.MagickaBar.setColor(uMagickaColor, uMagickaPhantomColor, uMagickaBackgroundColor, uMagickaPenaltyColor, uMagickaFlashColor);
-		Bars.Resources.StaminaBar.setColor(uStaminaColor, uStaminaPhantomColor, uStaminaBackgroundColor, uStaminaPenaltyColor, uStaminaFlashColor);
+		setLowerColor();
 		Bars.Special.SpecialBar.setColor(uSpecialColor, uSpecialPhantomColor, uSpecialBackgroundColor, uSpecialPenaltyColor, uSpecialFlashColor);
 	}
-	
+
 	public function setWidth(a_width: Number, a_resourceWidth: Number)
 	{	
 		fCurrentWidth = a_width;

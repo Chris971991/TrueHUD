@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #include "TrueHUDAPI.h"
 
 namespace Scaleform
@@ -96,5 +97,12 @@ namespace Scaleform
 		// Dovakarn: the lowest health seen since the keep time was last set (below 0: not looked at yet). Damage over time
 		// raises no hit event for its ticks; health falling below this counts as a hit landing (UpdateInfo)
 		float _fightLowHealth = -1.f;
+
+		// Dovakarn: whether the actor can spend magicka (Utils::CanSpendMagicka: a person, or it knows a spell costing
+		// magicka), asked at most once a second and only while its magicka maximum is above 0. With the maxima it decides
+		// which lower bars the widget may show (UpdateInfo, updateData's pools)
+		bool _bCanSpendMagicka = false;
+		bool _bSpendAsked = false;
+		std::chrono::steady_clock::time_point _spendAskedAt{};
 	};
 }

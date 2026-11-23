@@ -52,9 +52,15 @@ namespace Papyrus
 		}
 	}
 
+	std::int32_t DovakarnBars::Pools(RE::StaticFunctionTag*, RE::Actor* a_actor)
+	{
+		return static_cast<std::int32_t>(Utils::GetResourcePools(a_actor));
+	}
+
 	bool DovakarnBars::Register(RE::BSScript::IVirtualMachine* a_vm)
 	{
 		a_vm->RegisterFunction("Fight", "DovakarnBars", Fight);
+		a_vm->RegisterFunction("Pools", "DovakarnBars", Pools);
 
 		logger::info("Registered DovakarnBars class");
 		return true;

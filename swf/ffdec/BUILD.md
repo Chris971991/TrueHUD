@@ -81,3 +81,25 @@ need Adobe Animate to publish, so the shipped SWF is built from the released one
    gem, a Russian name, a long potion, a potion, arrows and gold. Dovakarn renders it in Ruffle (the workspace's dovui
    `tools/render.cjs`); Ruffle has no `textAutoSize`, so TrueHUD's own file cuts a long name there where the game
    shrinks it.
+6. **Only the bars an actor really has** (`dovakarn/1.1.9-real-bars`, 23/11/2026): `swf/ffdec-pools/scripts/__Packages/Widgets/TrueHUD_InfoBarBase.as`
+   is step 2's script with the source's change (`swf/Widgets/TrueHUD_InfoBarBase.as`): `updateData` takes a 19th value,
+   `a_pools` (1 magicka + 2 stamina; an older DLL sends none, read as both), from the DLL's `Utils::GetResourcePools`. A
+   pool the actor does not have never shows (`applyResources`, called by `toggleResources` and whenever the pools or a bar's
+   changed-from-full flag change); one pool alone shows in the lower line, so a magicka-only actor's magicka is drawn in the
+   stamina bar in magicka's colours (`bLowerIsMagicka`, `setLowerColor`) and the bar lifts by one line
+   (`resourcesYOffsetOne`) either way. Mode 1 keeps TrueHUD's rule for the bars the actor has (magicka changed shows both,
+   stamina changed the stamina bar); nothing comes back after the target is killed. The boss bar shares the class and the
+   rule. Compile it into step 5's file (FFDec 26.2, `C:\tools\ffdec`):
+
+   ```
+   java -jar ffdec-cli.jar -importScript TrueHUD_Widgets.style.swf TrueHUD_Widgets.pools.swf swf/ffdec-pools
+   ```
+
+   The result used by Dovakarn has sha256 `19acceafaf412ebfc34f95d75e47d804d786833bfb9bf34f7920c3c09c73296e`; the same
+   command gives the same bytes again. Decompiling it and step 5's file shows only `TrueHUD_InfoBarBase.as` changed.
+
+   `swf/ffdec-pools/harness/scripts/frame_1/DoAction.as` is an offline stage for the floating bar (compile it with
+   `-importScript` into any one-frame AS2 SWF): it loads the widgets (FlashVar `widgets`), makes twelve bars (a full target
+   from an older DLL, a person, a mudcrab with stamina only, a magicka-only creature, one with neither, others full and not
+   full, pools changing, a kill) and after 90 frames reports each bar's lines shown, lower-line source, lift and colour
+   through `ExternalInterface.call("dovTrace", ...)`. Run in Ruffle beside `TrueHUD_Assets0-2.swf` and `gfxfontlib.swf`.

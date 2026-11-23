@@ -28,6 +28,9 @@ namespace Papyrus
 	{
 	public:
 		static void Fight(RE::StaticFunctionTag*, RE::Actor* a_actor);
+		// Int Function Pools(Actor akActor) global native: the lower bars akActor really has (Utils::GetResourcePools), 1
+		// magicka + 2 stamina; 3 for no actor. Dovakarn's client asks it so the name plate lifts by the bars the widget shows
+		static std::int32_t Pools(RE::StaticFunctionTag*, RE::Actor* a_actor);
 
 		static bool Register(RE::BSScript::IVirtualMachine* a_vm);
 	};

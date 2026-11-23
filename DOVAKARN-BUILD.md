@@ -149,3 +149,28 @@ Dovakarn's builds: served sha256 `ede63e383f341c862b907202ffa60d2b21476957d7e0e9
 `08e27355641f0cf44cb078d30ef786aa7ccef1be75b8fea96bb4852cc39161b3` (CommonLibSSE-NG `cab9f743f`,
 `-DTRUEHUD_DOVAKARN_DEFAULTS=ON`; environment `CompiledPluginsPath`, `CommonLibSSEPath_NG`, `VCPKG_ROOT`, Visual Studio
 Community 2026's CMake).
+
+## Only the bars an actor really has (branch `dovakarn/1.1.9-real-bars`, 23/11/2026)
+
+From `dovakarn/1.1.9-fight-feed`, built the same two ways. A mudcrab's floating bar drew magicka and stamina under its
+health; creatures with no magicka (wolves, bears, skeevers, horses) or no stamina should not draw that bar, decided from
+the actor's own values, not a list (so modded creatures are right too):
+
+- **`Utils::GetResourcePools(actor)`** (`src/Utils.cpp`): stamina when the actor's maximum (permanent plus temporary) is
+  above 0; magicka when its maximum is above 0 and it can spend it (`Utils::CanSpendMagicka`): the player, a playable or
+  face-generated race (players and humanoid NPCs), or an actor that knows a castable spell costing magicka
+  (`CalculateMagickaCost` above 0) in its race's list, its added spells, or its own list through its template chain while it
+  takes spells from a template; a leveled spell list counts. Leftover race magicka a creature can never spend is no pool
+  (Skyrim.esm: MudcrabRace, FrostbiteSpiderRace and ChaurusRace start with 4, WolfRace, the bears, SkeeverRace and
+  HorseRace with 0; DLC2SeekerRace and DragonPriestRace start with no stamina: what an NPC ends up with also takes its offsets and, with auto-calculated stats, its class and level, which is why the rule reads the actor, not the race).
+- **`InfoBarBase::UpdateInfo`** hands it to the widget as `updateData`'s 19th value (1 magicka + 2 stamina), asking the
+  spell part at most once a second per bar and only while the magicka maximum is above 0. The widget
+  (`swf/ffdec/BUILD.md` step 6) shows only those bars; an older widget ignores the extra value.
+- **`Int DovakarnBars.Pools(Actor akActor)`** (`src/Papyrus.cpp`, `scripts/source/DovakarnBars.psc`): the same answer for
+  Dovakarn's client, whose name plate lifts by the bars the widget shows. `Scripts/DovakarnBars.pex` must be the one
+  compiled from this branch (it declares `Pools`); compiled with the Creation Kit's PapyrusCompiler.exe against stubs of
+  Form, ObjectReference and Actor: sha256 `2e0859ffe49957f69e2a2f927d55b40638651a1078c9d3c86d47412fb5b677cf`.
+
+Dovakarn's builds: served sha256 `ed79db719dc0d37aabe5a449bf2eb166f83684b7e6bc2aa3b9e67b69f1274553`, dev
+`87c153cc510499decc4f94092f198f6dd10951279cdb46ee288c79797ba87918` (CommonLibSSE-NG `cab9f743f`,
+`-DTRUEHUD_DOVAKARN_DEFAULTS=ON`).
